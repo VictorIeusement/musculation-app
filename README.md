@@ -43,10 +43,24 @@ mesure : les entêtes sont reconnues en français comme en anglais, le séparate
 est deviné, et les décimales à virgule sont acceptées. Réimporter le même
 fichier ne duplique rien ; une mesure par jour est conservée, la plus tardive.
 
-Trois petits graphiques plutôt qu'un seul : les trois mesures n'ont pas le même
+Quatre petits graphiques plutôt qu'un seul : les trois mesures n'ont pas le même
 ordre de grandeur, et sur un axe commun les variations de poids — ce qu'on vient
 regarder — seraient écrasées à plat. Un doigt glissé sur les courbes affiche les
 valeurs d'une date ; le tableau en dessous donne les mêmes chiffres sans couleur.
+Le quatrième cadre porte le volume d'entraînement par semaine, sur le même axe de
+temps : c'est là que se lit le lien entre ce qu'on fait et ce que la balance
+mesure. Une commande de plage (3 mois, 1 an, tout) régit l'ensemble de l'écran.
+
+Sous les courbes, un tableau par périodes de quatre semaines met côte à côte les
+séances faites, le volume soulevé et ce que les mesures ont bougé. C'est une mise
+en regard, pas une preuve de cause à effet : ce qu'on mange et ce qu'on dort
+pèsent plus lourd, et la composition corporelle répond en mois. L'app n'ajuste
+jamais la difficulté d'après la balance ; elle affiche la tendance récente sur
+l'écran de fin de séance, là où l'on décide de monter d'un niveau, et s'abstient
+si la mesure de référence est trop ancienne pour que la comparaison ait un sens.
+
+Une seule mesure par jour est retenue, la première : on se pèse le matin à jeun,
+et une pesée du soir pèse un à deux kilos de plus.
 
 Il n'y a pas de connexion automatique à Withings : leur API demande un secret
 qui n'a pas sa place dans un dépôt public, et l'appel direct depuis un

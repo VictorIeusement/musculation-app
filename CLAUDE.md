@@ -42,7 +42,13 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    lui seul découpe (un export français sépare en `;` et écrit ses décimales en
    `,`) ; `lireBalance()` reconnaît les colonnes par mots-clés, français comme
    anglais, et lève un message explicite plutôt que d'inventer. `fusionCorps()`
-   déduplique par jour, la mesure la plus tardive l'emportant.
+   déduplique par jour en gardant la PREMIÈRE pesée — celle du matin à jeun ;
+   une pesée du soir pèse un à deux kilos de plus et ferait remonter la courbe
+   pour rien. Withings nomme sa colonne « Gras (kg) », pas « Masse grasse » :
+   toute nouvelle marque de balance demande d'élargir `COLONNES`.
+   `periodes()` et `tendance()` mettent l'entraînement en regard des mesures
+   sans jamais affirmer de causalité, et se taisent quand la mesure de référence
+   est bien plus ancienne que la fenêtre demandée.
 2 bis. NIVEAU DE DIFFICULTÉ — `DATA.level` par séance, `DATA.reps`, `DATA.dur`,
    `DATA.rest` par exercice. `levelUp()` applique un cran (répétitions, puis
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il
@@ -65,7 +71,12 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    tracé par cadre, donc pas de légende : le titre nomme la série. Les trois
    teintes de `SERIES` sont validées pour les daltonismes ; ne pas les changer
    sans revalider. Le tableau sous les courbes est la version lisible sans
-   couleur, et il ne doit pas disparaître.
+   couleur, et il ne doit pas disparaître. Le quatrième cadre porte le volume
+   d'entraînement sur le même axe de temps : c'est là que se lit le lien avec
+   les courbes, et c'est volontairement une mise en regard, pas un coefficient —
+   sur si peu de points il serait faussement précis. `borneBasse()` ancre la
+   plage sur l'événement le plus récent, mesure ou séance, et l'axe couvre les
+   deux sources, sinon les barres déborderaient du cadre.
    Côté accueil : `nextSession()` choisit la séance mise en avant — le cycle
    `DATA.nextIdx`, sauf si la semaine en cours est vide, auquel cas on repart de
    A. `paramsOf()` rend les paramètres réels d'un exercice (séries, répétitions,

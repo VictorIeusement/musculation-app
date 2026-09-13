@@ -145,6 +145,10 @@
   .fig .mat rect,.fig .mat circle{fill:var(--signal);stroke:none}
   .fig .band{stroke:var(--signal);stroke-width:2.2;stroke-dasharray:4 3}
   /* ---------- suivi corporel ---------- */
+  .plages{display:flex;gap:8px;padding:14px 0 2px}
+  .plages button{padding:7px 13px;border-radius:9px;background:var(--concrete-2);
+                 font-size:13px;font-weight:600;color:var(--ink-soft)}
+  .plages button.actif{background:var(--ink);color:var(--concrete)}
   .courbes{display:block;width:100%;margin-top:6px;overflow:visible;
            touch-action:pan-y;user-select:none;-webkit-user-select:none}
   .courbes .trace{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -507,12 +511,15 @@ function merge(a,b){
    ========================================================= */
 const jourDe=t=>new Date(t).toISOString().slice(0,10);
 
+/* Une mesure par jour, la PREMIÈRE : on se pèse le matin à jeun, et une pesée
+   du soir après le repas pèse un à deux kilos de plus. Garder la plus tardive
+   ferait remonter la courbe pour une raison qui n'a rien à voir avec la forme. */
 function fusionCorps(a,b){
   const par={};
   [].concat(b||[],a||[]).forEach(m=>{
     if(!m||!m.d) return;
     const k=jourDe(m.d);
-    if(!par[k]||m.d>par[k].d) par[k]=m;
+    if(!par[k]||m.d<par[k].d) par[k]=m;
   });
   return Object.keys(par).map(k=>par[k]).sort((x,y)=>y.d-x.d).slice(0,2000);
 }
@@ -550,7 +557,7 @@ const sansAccent=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,
 const normEntete=t=>sansAccent(t).replace(/\(.*?\)/g," ").replace(/[^a-z% ]+/g," ").replace(/\s+/g," ").trim();
 const COLONNES=[
   ["fatpc", ["% masse grasse","taux de masse grasse","% graisse","fat percentage","fat ratio","body fat %"]],
-  ["fat",   ["masse grasse","fat mass","graisse"]],
+  ["fat",   ["masse grasse","fat mass","graisse","gras","body fat"]],
   ["muscle",["masse musculaire","muscle mass","muscle"]],
   ["bone",  ["masse osseuse","bone mass"]],
   ["water", ["masse hydrique","hydratation","hydration","water"]],
@@ -1165,11 +1172,107 @@ const SERIES=[
   {k:"fat",    nom:"Masse grasse",     court:"Graisse", u:"kg", c:"#8A2F86"}
 ];
 const kilo=v=>fmt(Number(v).toFixed(1));
-const CH={w:320, h:96, x0:34, x1:312, haut:22, bas:80};
+const tonnes=v=>fmt((v/1000).toFixed(1))+" t";
 
-function courbes(mes){
+/* Plage de temps affichée. Une seule commande, au-dessus de tout ce qu'elle
+   régit : les quatre cadres et le tableau des périodes bougent ensemble. */
+let plage=0;   // en jours ; 0 = tout l'historique
+const PLAGES=[[90,"3 mois"],[365,"1 an"],[0,"Tout"]];
+/* La plage s'ancre sur l'événement le plus récent, mesure ou séance confondues,
+   et s'applique aux deux : sinon l'axe se calerait sur les seules mesures et
+   les barres d'entraînement déborderaient du cadre. */
+function borneBasse(){
+  if(!plage) return 0;
+  const m=(DATA.body||[])[0], h=(DATA.history||[])[0];
+  const fin=Math.max(m?m.d:0, h?h.d:0);
+  return fin-plage*86400000;
+}
+const surPlage=(liste,b0)=>(liste||[]).filter(x=>x.d>=b0);
+const CH={w:320, h:96, x0:34, x1:312, haut:22, bas:80};
+const SEM=7*86400000, BLOC=28*86400000;
+
+/* Volume soulevé par semaine : c'est la trace de l'entraînement qu'on met en
+   regard des mesures. On le compte en tonnes dès qu'il dépasse le millier. */
+function parSemaine(seances,t0,t1){
+  const sem=[];
+  for(let t=t0;t<=t1;t+=SEM) sem.push({t, n:0, vol:0});
+  (seances||[]).forEach(h=>{
+    const i=Math.floor((h.d-t0)/SEM);
+    if(i>=0&&i<sem.length){ sem[i].n++; sem[i].vol+=h.vol||0; }
+  });
+  return sem;
+}
+
+/* Mesure la plus proche d'une date, dans une fenêtre de dix jours. */
+function mesureVers(mes,t){
+  let best=null;
+  mes.forEach(m=>{ if(Math.abs(m.d-t)<10*86400000 && (!best||Math.abs(m.d-t)<Math.abs(best.d-t))) best=m; });
+  return best;
+}
+
+/* Périodes de quatre semaines : ce qui a été fait, et ce que les mesures ont
+   bougé pendant ce temps. Aucune causalité n'est affirmée : c'est une mise en
+   regard, que le tableau donne brute. */
+function periodes(mes,seances){
+  if(!mes.length) return [];
+  const sc=seances||DATA.history||[];
+  const fin=Math.max(mes[0].d, (sc[0]||{}).d||0);
+  const debut=Math.min(mes[mes.length-1].d, (sc.slice(-1)[0]||{}).d||fin);
+  const out=[];
+  for(let t=fin; t>debut-BLOC; t-=BLOC){
+    const a=t-BLOC, b=t;
+    const ma=mesureVers(mes,a), mb=mesureVers(mes,b);
+    const dedans=sc.filter(h=>h.d>a&&h.d<=b);
+    const p={a, b, n:dedans.length, vol:dedans.reduce((x,h)=>x+(h.vol||0),0)};
+    if(ma&&mb&&ma!==mb) SERIES.forEach(se=>{
+      if(ma[se.k]!=null&&mb[se.k]!=null) p["d"+se.k]=Math.round((mb[se.k]-ma[se.k])*10)/10;
+    });
+    if(p.n||p.dkg!=null||p.dmuscle!=null) out.push(p);
+  }
+  return out;
+}
+const signe=v=>(v>0?"+":v<0?"−":"")+kilo(Math.abs(v));
+
+/* Tendance récente, à afficher là où se décide le niveau de difficulté : une
+   information, pas une consigne. L'app ne règle pas la difficulté d'après la
+   balance — trop de choses entrent dans ces chiffres pour en tirer un ordre. */
+function tendance(jours){
+  const mes=(DATA.body||[]).slice().sort((a,b)=>b.d-a.d);
+  if(mes.length<2) return null;
+  const fin=mes[0], cible=fin.d-jours*86400000;
+  const deb=mes.find(m=>m.d<=cible)||mes[mes.length-1];
+  const j=Math.round((fin.d-deb.d)/86400000);
+  /* la fenêtre doit rester proche de celle demandée : à défaut de mesure il y a
+     deux mois, on se tait plutôt que d'annoncer une tendance « récente » qui
+     remonterait en réalité à l'an dernier */
+  if(deb===fin||j<14||j>jours*2) return null;
+  const t={j}; let n=0;
+  SERIES.forEach(se=>{
+    if(fin[se.k]!=null&&deb[se.k]!=null){ t[se.k]=Math.round((fin[se.k]-deb[se.k])*10)/10; n++; }
+  });
+  return n?t:null;
+}
+
+/* Au-delà de six semaines sans mesure, on coupe le tracé : une droite tirée
+   par-dessus un trou de plusieurs mois raconte une progression qui n'a pas été
+   mesurée. */
+const TROU=42*86400000;
+function chemin(v,k,X,Y){
+  let d="", prec=null;
+  v.forEach(m=>{
+    d+=(prec==null||m.d-prec>TROU?"M":"L")+X(m.d).toFixed(1)+" "+Y(m[k]).toFixed(1)+" ";
+    prec=m.d;
+  });
+  return d.trim();
+}
+
+function courbes(mes,seances){
   const pts=mes.slice().sort((a,b)=>a.d-b.d);
-  const t0=pts[0].d, t1=pts[pts.length-1].d, dt=Math.max(1,t1-t0);
+  const sc=(seances||[]).slice().sort((a,b)=>a.d-b.d);
+  /* l'axe couvre les deux sources : mesures et séances */
+  const t0=Math.min(pts[0].d, sc.length?sc[0].d:pts[0].d);
+  const t1=Math.max(pts[pts.length-1].d, sc.length?sc[sc.length-1].d:0);
+  const dt=Math.max(1,t1-t0);
   const X=d=>CH.x0+(d-t0)/dt*(CH.x1-CH.x0);
   let out="";
   SERIES.forEach((se,n)=>{
@@ -1188,13 +1291,42 @@ function courbes(mes){
           <line class="regle" x1="${CH.x0}" y1="${lo}" x2="${CH.x1}" y2="${lo}"/>
           <text class="ech" x="0" y="${hi+4}">${kilo(mx)}</text>
           <text class="ech" x="0" y="${lo+3}">${kilo(mn)}</text>
-          <path class="trace" stroke="${se.c}" d="${v.map((m,i)=>(i?"L":"M")+X(m.d).toFixed(1)+" "+Y(m[se.k]).toFixed(1)).join(" ")}"/>`;
+          <path class="trace" stroke="${se.c}" d="${chemin(v,se.k,X,Y)}"/>`;
+    /* un point isolé entre deux trous ne se voit pas : on le pointe */
+    v.forEach((m,i)=>{
+      const seulAvant=i===0||m.d-v[i-1].d>TROU, seulApres=i===v.length-1||v[i+1].d-m.d>TROU;
+      if(seulAvant&&seulApres&&i<v.length-1)
+        out+=`<circle cx="${X(m.d).toFixed(1)}" cy="${Y(m[se.k]).toFixed(1)}" r="2" fill="${se.c}"/>`;
+    });
     const der=v[v.length-1];
     out+=`<circle class="bout" cx="${X(der.d).toFixed(1)}" cy="${Y(der[se.k]).toFixed(1)}" r="3.6" fill="${se.c}"/>
           <text class="val" id="v-${se.k}" x="${CH.x1}" y="${top+13}">${kilo(der[se.k])} ${se.u}</text>`;
     out+=`<g class="pt-${se.k}" data-hi="${hi}" data-lo="${lo}" data-mn="${mn}" data-mx="${mx}"></g>`;
   });
-  const base=3*CH.h;
+  /* Quatrième cadre : l'entraînement, sur le même axe de temps. C'est là que se
+     lit le lien avec les courbes du dessus — un coefficient calculé sur si peu
+     de points donnerait un chiffre faussement précis. */
+  const top=3*CH.h, hi=top+CH.haut, lo=top+CH.bas;
+  const sem=parSemaine(sc,t0,t1);
+  const volMax=Math.max(...sem.map(w=>w.vol),1);
+  const larg=Math.min(26,Math.max(1.5,(CH.x1-CH.x0)/Math.max(1,sem.length)-2));
+  out+=`<text class="titre" x="0" y="${top+12}">Entraînement <tspan fill="var(--steel)">par semaine</tspan></text>`;
+  if(!sc.length){
+    out+=`<text class="ech" x="${CH.x0}" y="${(hi+lo)/2}">aucune séance enregistrée pour l'instant</text>`;
+  } else {
+    out+=`<line class="regle" x1="${CH.x0}" y1="${lo}" x2="${CH.x1}" y2="${lo}"/>
+          <text class="ech" x="0" y="${hi+4}">${tonnes(volMax)}</text>`;
+    sem.forEach(w=>{
+      if(!w.vol) return;
+      const h=Math.max(1.5,(w.vol/volMax)*(lo-hi));
+      const x=X(w.t), l=Math.min(larg,CH.x1-x);          // aucune barre ne dépasse du cadre
+      if(l<0.5) return;
+      out+=`<rect x="${x.toFixed(1)}" y="${(lo-h).toFixed(1)}" width="${l.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="var(--ink)" opacity=".72"/>`;
+    });
+    const total=sc.reduce((a,h)=>a+(h.vol||0),0);
+    out+=`<text class="val" x="${CH.x1}" y="${top+13}">${tonnes(total)}</text>`;
+  }
+  const base=4*CH.h;
   out+=`<text class="ech" x="${CH.x0}" y="${base+4}">${jour(t0)}</text>
         <text class="ech" x="${CH.x1}" y="${base+4}" text-anchor="end">${jour(t1)}</text>
         <line class="viseur" id="viseur" x1="0" y1="14" x2="0" y2="${base-10}" style="display:none"/>`;
@@ -1204,32 +1336,49 @@ function courbes(mes){
 
 function renderBody(){
   const mes=(DATA.body||[]).slice().sort((a,b)=>b.d-a.d);
+  const b0=borneBasse();
+  const vues=surPlage(mes,b0), seances=surPlage(DATA.history,b0);
   const der=mes[0];
-  let ecart="";
-  if(der&&der.kg!=null){
-    const cible=der.d-30*86400000;
-    const ref=mes.find(m=>m.kg!=null&&m.d<=cible);
-    if(ref){ const d=Math.round((der.kg-ref.kg)*10)/10;
-             ecart=` · ${d>0?"+":d<0?"−":""}${kilo(Math.abs(d))} kg en 30 jours`; }
-  }
+  /* tendance() refuse de comparer avec une pesée bien plus ancienne que la
+     fenêtre demandée : mieux vaut ne rien dire qu'annoncer « en 30 jours » un
+     écart qui porte en réalité sur un an. */
+  const t30=tendance(30);
+  const ecart = t30&&t30.kg!=null ? ` · ${signe(t30.kg)} kg en ${t30.j} jours` : "";
   view.innerHTML=`
   <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
     <div><h1>Suivi</h1><div class="sub" id="b-sub">${der?`${der.kg!=null?kilo(der.kg)+" kg":"—"}${ecart}`:"Rien d'importé pour l'instant"}</div></div>
     <button id="b-import" class="sub" style="text-decoration:underline;text-underline-offset:3px;flex:none">Importer</button>
   </div>
   <div class="section">
-    ${mes.length>1?courbes(mes):`
+    ${mes.length>1?`<div class="plages">${PLAGES.map(([j,nom])=>
+        `<button data-plage="${j}" class="${j===plage?"actif":""}">${nom}</button>`).join("")}</div>`:""}
+    ${vues.length>1?courbes(vues,seances):mes.length>1?`<div class="empty" style="border:0">Moins de deux mesures sur cette plage. Élargis-la.</div>`:`
       <div class="empty" style="border:0">Importe l'export de ta balance pour voir ton poids, ta masse grasse et ta masse musculaire évoluer ici.
 
       Sur le site de Withings, compte → télécharger mes données ; le fichier <code>weight.csv</code> de l'archive est celui à importer. Les exports d'autres balances passent aussi, tant que le fichier a une colonne de date et une de poids.</div>`}
-    ${mes.length?`
-    <div class="section-h">Mesures</div>
+    ${vues.length?(()=>{
+      const per=periodes(vues,seances).filter(p=>p.n||p.dkg!=null);
+      const utiles=per.filter(p=>p.n&&(p.dkg!=null||p.dmuscle!=null));
+      return `
+    <div class="section-h">Entraînement et mesures, par période de 4 semaines</div>
+    ${utiles.length<2?`<div class="empty" style="border:0;padding:0 0 12px">Il faut deux périodes de quatre semaines comportant à la fois des séances et des pesées pour que la mise en regard ait un sens. ${utiles.length?"Une seule pour l'instant.":"Aucune pour l'instant."} Continue, ça se remplit tout seul.</div>`:""}
+    ${per.length?`<table class="tab"><thead><tr>
+      <th>Période</th><th>Séances</th><th>Volume</th>${SERIES.map(se=>`<th><span class="pastille" style="background:${se.c}"></span>Δ</th>`).join("")}
+    </tr></thead><tbody>
+      ${per.slice(0,6).map(p=>`<tr>
+        <td>${jour(p.a)}</td><td>${p.n||"—"}</td><td>${p.vol?tonnes(p.vol):"—"}</td>
+        ${SERIES.map(se=>`<td>${p["d"+se.k]!=null?signe(p["d"+se.k]):"—"}</td>`).join("")}
+      </tr>`).join("")}
+    </tbody></table>
+    <div class="empty" style="border:0;padding-top:14px">Ce tableau met côte à côte ce que tu as fait et ce que la balance a mesuré pendant le même temps. Il ne prouve pas de lien de cause à effet : sur ces échelles, ce que tu manges et ce que tu dors pèsent plus lourd que la salle, et la composition corporelle répond en mois, pas en semaines.</div>`:""}
+    <div class="section-h">Mesures</div>`;})():""}
+    ${vues.length?`
     <table class="tab"><thead><tr>
       <th>Date</th>${SERIES.map(se=>`<th><span class="pastille" style="background:${se.c}"></span>${se.court}</th>`).join("")}
     </tr></thead><tbody>
-      ${mes.slice(0,14).map(m=>`<tr><td>${jour(m.d)}</td>${SERIES.map(se=>`<td>${m[se.k]!=null?kilo(m[se.k]):"—"}</td>`).join("")}</tr>`).join("")}
+      ${vues.slice(0,14).map(m=>`<tr><td>${jour(m.d)}</td>${SERIES.map(se=>`<td>${m[se.k]!=null?kilo(m[se.k]):"—"}</td>`).join("")}</tr>`).join("")}
     </tbody></table>
-    <div class="empty" style="border:0;padding-top:14px">${mes.length} mesure${mes.length>1?"s":""} en mémoire${mes.length>14?", les 14 dernières ci-dessus":""}. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
+    <div class="empty" style="border:0;padding-top:14px">${vues.length} mesure${vues.length>1?"s":""} sur la plage${vues.length<mes.length?`, ${mes.length} en mémoire`:""}${vues.length>14?", les 14 dernières ci-dessus":""}, une par jour — la première, celle du matin. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
   </div>
   <input type="file" id="b-file" accept=".csv,text/csv,text/plain" style="display:none">
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
@@ -1321,7 +1470,12 @@ function renderDone(d){
     <div class="lines">
       ${Object.keys(lines).map(k=>`<div>${esc(k)}<span>${lines[k].join(" · ")}</span></div>`).join("")}
     </div>
-    <div class="empty" style="padding-top:18px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
+    ${(()=>{
+      const t=tendance(56); if(!t) return "";
+      const bouts=SERIES.filter(se=>t[se.k]!=null).map(se=>`${se.nom.toLowerCase()} ${signe(t[se.k])} kg`);
+      return `<div class="empty" style="padding-top:18px">Sur les ${t.j} derniers jours : ${bouts.join(", ")}.</div>`;
+    })()}
+    <div class="empty" style="border:0;padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
     <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1">C'était trop facile</button></div>
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
@@ -1342,6 +1496,7 @@ view.addEventListener("click",ev=>{
   if(b.id==="gear") return renderGear();
   if(b.id==="suivi") return renderBody();
   if(b.id==="b-import") return el("b-file").click();
+  if(b.dataset.plage!=null){ plage=+b.dataset.plage; return renderBody(); }
   if(b.id==="g-add"){
     readGear();
     const w=parseFloat(el("g-new").value);
