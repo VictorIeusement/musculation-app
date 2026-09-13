@@ -31,6 +31,23 @@ La séance mise en avant suit le cycle A → B → C, sauf quand la semaine en c
 ne compte aucune séance : le programme est hebdomadaire, on repart alors de A
 plutôt que de reprendre le cycle laissé en plan la semaine d'avant.
 
+## Illustrations et vidéos
+
+Chaque exercice est accompagné, pendant la séance, d'un schéma montrant la
+position à prendre, et d'un lien « Voir une vidéo de l'exercice ».
+
+Les schémas sont du SVG écrit directement dans `index.html` : rien à
+télécharger, ils s'affichent hors ligne comme le reste. Ils donnent la position
+et le placement du matériel, pas le détail du geste — les consignes de
+l'exercice et la vidéo sont là pour ça. Pour modifier ou ajouter une figure :
+constante `FIG`, section 1 bis, un exercice n'y est qu'une liste d'articulations
+dans un repère 120×80.
+
+Le lien vidéo ouvre une **recherche** plutôt qu'une vidéo précise : une adresse
+de vidéo finit toujours par mourir, une recherche non, et elle remonte ce qui se
+fait de mieux au moment où on la lance. C'est le seul élément de l'app qui
+demande le réseau.
+
 ## Niveau de difficulté
 
 Chaque séance (A, B, C) porte son propre niveau, conservé d'une fois sur l'autre

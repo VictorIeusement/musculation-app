@@ -133,6 +133,20 @@
   .sets i.now{background:var(--signal)}
   .sets em{font-style:normal;font-size:13px;color:var(--steel);margin-left:6px}
 
+  .fig{display:block;width:calc(100% - 40px);height:158px;margin:16px 20px 0;
+       background:rgba(255,255,255,.45);border:1px solid var(--line);border-radius:var(--r);
+       stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
+  .fig .tete{fill:var(--ink);stroke:none}
+  .fig .loin{opacity:.34}
+  .fig .sol{stroke:rgba(21,23,27,.22);stroke-width:2}
+  .fig .banc{stroke:var(--steel)}
+  .fig .banc rect{fill:var(--steel);stroke:none}
+  .fig .mat{stroke:var(--signal)}
+  .fig .mat rect,.fig .mat circle{fill:var(--signal);stroke:none}
+  .fig .band{stroke:var(--signal);stroke-width:2.2;stroke-dasharray:4 3}
+  .video{display:block;margin:14px 20px 0;font-size:13px;color:var(--steel);
+         text-decoration:underline;text-underline-offset:3px}
+
   .cues{margin:20px 20px 0;padding:16px 16px 16px 18px;background:rgba(21,23,27,.045);border-radius:var(--r)}
   .cues li{font-size:14px;line-height:1.5;color:var(--ink-soft);margin-bottom:7px;list-style:none;position:relative;padding-left:14px}
   .cues li:last-child{margin-bottom:0}
@@ -308,6 +322,114 @@ function estimate(p){
     s += e.sets*(work+getRest(p.id,e));
   });
   return Math.round(s/60);
+}
+
+/* =========================================================
+   1 bis. FIGURES
+   Une illustration par exercice, dessinée en SVG dans la page : rien à charger,
+   rien à mettre en cache, ça marche hors ligne comme le reste. Le pantin tient
+   dans un repère 120×80, sol à y=72 ; chaque exercice n'est qu'un jeu de
+   coordonnées (tête, épaule, hanche, articulations). Le membre le plus éloigné
+   est tracé en clair, pour qu'on lise de quel côté on se place.
+   Ces schémas donnent la position, pas le détail du geste : les consignes de
+   l'exercice et le lien vidéo sont là pour ça.
+   ========================================================= */
+const L=(a,b)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+
+function corps(c){
+  let s="";
+  if(c.g2) s+=`<g class="loin">${L(c.h,c.g2)}${L(c.g2,c.p2)}</g>`;
+  if(c.c2) s+=`<g class="loin">${L(c.e,c.c2)}${L(c.c2,c.m2)}</g>`;
+  s+=L(c.e,c.h);
+  if(c.g) s+=L(c.h,c.g)+L(c.g,c.p);
+  if(c.c) s+=L(c.e,c.c)+L(c.c,c.m);
+  s+=`<circle cx="${c.t[0]}" cy="${c.t[1]}" r="5.5" class="tete"/>`;
+  return s;
+}
+function barre(a,b){
+  const d=`<rect x="-1.6" y="-5" width="3.2" height="10" rx="1"/>`;
+  return `<g class="mat"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>
+   <g transform="translate(${a[0]},${a[1]})">${d}</g><g transform="translate(${b[0]},${b[1]})">${d}</g></g>`;
+}
+const halt=(x,y)=>`<g class="mat" transform="translate(${x},${y})">
+  <line x1="-3.5" y1="0" x2="3.5" y2="0"/><rect x="-5.5" y="-3.5" width="2.8" height="7" rx="1"/><rect x="2.7" y="-3.5" width="2.8" height="7" rx="1"/></g>`;
+/* banc : plateau (éventuellement incliné) et deux pieds au sol */
+const banc=(x1,y1,x2,y2)=>`<g class="banc"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>
+   <line x1="${x1+5}" y1="${y1+(y2-y1)*0.08}" x2="${x1+5}" y2="72"/>
+   <line x1="${x2-5}" y1="${y2-(y2-y1)*0.08}" x2="${x2-5}" y2="72"/></g>`;
+const bande=(a,b)=>`<path class="band" d="M${a[0]} ${a[1]} Q ${(a[0]+b[0])/2+4} ${(a[1]+b[1])/2} ${b[0]} ${b[1]}"/>`;
+
+const FIG={
+"Développé couché":{alt:"Allongé sur le banc plat, omoplates serrées, barre au-dessus des pectoraux",
+  g:()=>banc(24,50,100,50)+barre([62,30],[92,30]),
+  c:{t:[88,44],e:[79,47],h:[50,50],c:[77,38],m:[76,30],g:[41,60],p:[39,72]}},
+"Développé incliné haltères":{alt:"Banc à 30-40°, coudes à 45° du buste, haltères au-dessus des épaules",
+  g:()=>banc(34,62,90,36)+halt(76,24)+halt(68,28),
+  c:{t:[85,34],e:[77,40],h:[48,57],c:[77,32],m:[76,25],g:[38,64],p:[34,72]}},
+"Pompes sur poignées":{alt:"Corps gainé en planche, mains sur les poignées, descente sous le niveau du sol",
+  g:()=>`<g class="mat"><rect x="24" y="60" width="8" height="7" rx="1.5"/></g>`,
+  c:{t:[24,44],e:[33,50],h:[66,58],c:[28,55],m:[28,60],g:[84,64],p:[100,70]}},
+"Élévations latérales":{alt:"Debout, léger penché avant, bras montés jusqu'à l'horizontale",
+  g:()=>halt(34,40)+halt(88,40),
+  c:{t:[60,22],e:[61,32],h:[61,50],c:[48,36],m:[37,40],c2:[74,36],m2:[85,40],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
+"Dips sur banc":{alt:"Mains au bord du banc, doigts vers l'avant, coude à 90°",
+  g:()=>banc(18,50,54,50),
+  c:{t:[47,33],e:[45,41],h:[58,54],c:[40,47],m:[38,50],g:[80,58],p:[98,70]}},
+"Extension triceps élastique":{alt:"Élastique accroché en hauteur, coudes fixes et serrés, seuls les avant-bras bougent",
+  g:()=>bande([92,10],[73,26]),
+  c:{t:[58,24],e:[59,34],h:[60,50],c:[64,18],m:[73,26],g:[57,61],p:[56,72],g2:[64,61],p2:[65,72]}},
+"Roue abdominale":{alt:"À genoux, bassin rétroversé, dos plat, roue loin devant",
+  g:()=>`<g class="mat"><circle cx="28" cy="65" r="6.5"/><line x1="20" y1="65" x2="36" y2="65"/></g>`,
+  c:{t:[54,43],e:[60,48],h:[84,58],c:[46,55],m:[34,63],g:[88,70],p:[101,70]}},
+"Rowing barre buste penché":{alt:"Buste à 45°, dos plat, barre tirée vers le nombril",
+  g:()=>barre([44,50],[76,50]),
+  c:{t:[42,29],e:[50,35],h:[74,47],c:[54,45],m:[58,50],g:[76,59],p:[74,72],g2:[70,59],p2:[68,72]}},
+"Rowing unilatéral haltère":{alt:"Main et genou opposés en appui sur le banc, haltère qui pend sous l'épaule",
+  g:()=>banc(30,50,90,50)+halt(45,61),
+  c:{t:[48,31],e:[56,36],h:[86,42],c:[50,47],m:[45,59],c2:[57,43],m2:[58,50],g:[94,58],p:[92,72],g2:[80,50],p2:[70,50]}},
+"Pullover haltère":{alt:"Allongé sur le banc plat, haltère descendu derrière la tête, bras quasi tendus",
+  g:()=>banc(28,50,98,50)+halt(101,30),
+  c:{t:[88,44],e:[80,47],h:[52,50],c:[90,38],m:[99,31],g:[43,60],p:[41,72]}},
+"Tirage visage élastique":{alt:"Élastique à hauteur du visage, tiré vers le front, coudes hauts et écartés",
+  g:()=>bande([12,32],[44,31]),
+  c:{t:[68,24],e:[67,34],h:[66,50],c:[54,27],m:[45,31],g:[63,61],p:[62,72],g2:[70,61],p2:[71,72]}},
+"Curl biceps haltères":{alt:"Coudes collés au buste, pas d'élan de hanches, descente contrôlée",
+  g:()=>halt(50,37)+halt(72,37),
+  c:{t:[61,22],e:[61,32],h:[61,50],c:[57,44],m:[52,38],c2:[66,44],m2:[71,38],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
+"Gainage planche":{alt:"Appui sur les avant-bras, corps aligné des talons à la nuque",
+  c:{t:[24,50],e:[33,54],h:[68,60],c:[26,62],m:[38,62],g:[88,66],p:[102,70]}},
+"Gainage latéral":{alt:"Appui sur un coude, hanche haute, corps dans un seul plan",
+  c:{t:[26,44],e:[34,50],h:[70,62],c:[30,62],m:[41,62],g:[92,68],p:[104,70]}},
+"Soulevé de terre roumain":{alt:"Barre collée aux cuisses, bassin en arrière, genoux quasi tendus, dos plat",
+  g:()=>barre([38,54],[70,54]),
+  c:{t:[42,28],e:[50,34],h:[74,44],c:[52,44],m:[54,54],g:[76,58],p:[74,72],g2:[70,58],p2:[68,72]}},
+"Fente bulgare":{alt:"Pied arrière sur le banc, descente verticale, genou avant au-dessus du pied",
+  g:()=>banc(84,54,116,54)+halt(43,50)+halt(66,50),
+  c:{t:[54,20],e:[54,29],h:[55,45],c:[48,38],m:[44,48],c2:[62,38],m2:[65,48],g:[52,60],p:[52,72],g2:[73,62],p2:[89,54]}},
+"Hip thrust":{alt:"Haut du dos sur le banc, barre sur le pli des hanches, bassin jusqu'à l'alignement",
+  g:()=>banc(12,44,50,44)+barre([60,41],[78,41]),
+  c:{t:[26,37],e:[35,41],h:[68,45],c:[34,48],m:[30,44],g:[88,57],p:[88,72],g2:[78,58],p2:[78,72]}},
+"Développé militaire debout":{alt:"Barre au-dessus de la tête, fesses et abdos serrés, pas de cambrure",
+  g:()=>barre([44,16],[78,16]),
+  c:{t:[61,27],e:[61,35],h:[61,51],c:[52,27],m:[52,17],c2:[70,27],m2:[70,17],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
+"Mollets debout":{alt:"Avant-pieds sur une marche, talon très bas puis très haut",
+  g:()=>`<g class="banc"><rect x="46" y="64" width="32" height="8" rx="1"/></g>`+halt(44,44)+halt(78,44),
+  c:{t:[61,22],e:[61,32],h:[61,48],c:[52,38],m:[46,44],c2:[70,38],m2:[76,44],g:[59,56],p:[60,64],g2:[64,56],p2:[65,64]}},
+"Échauffement":{alt:"Cercles de bras et mise en route, à vide, avant de charger",
+  c:{t:[61,24],e:[61,34],h:[61,50],c:[52,27],m:[48,18],c2:[70,41],m2:[74,50],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
+"Étirements":{alt:"Étirement tenu une trentaine de secondes par côté, respiration libre",
+  c:{t:[56,22],e:[57,32],h:[58,49],c:[66,40],m:[73,49],g:[56,61],p:[55,72],g2:[65,60],p2:[74,50]}}
+};
+
+/* Recherche vidéo plutôt qu'une vidéo précise : une adresse de vidéo finit par
+   mourir, une recherche non. */
+const videoDe=n=>"https://www.youtube.com/results?search_query="+encodeURIComponent(n+" technique musculation");
+
+function figureDe(nom){
+  const f=FIG[nom]; if(!f) return "";
+  return `<svg class="fig" viewBox="0 0 120 80" role="img" aria-label="${esc(f.alt)}">
+    <line class="sol" x1="4" y1="72" x2="116" y2="72"/>
+    ${f.g?f.g():""}${corps(f.c)}</svg>`;
 }
 
 /* =========================================================
@@ -855,7 +977,9 @@ function renderSession(){
       ${Array.from({length:e.sets},(_,k)=>`<i class="${k<S.set-1?"done":k===S.set-1?"now":""}"></i>`).join("")}
       <em>${e.sets>1?`série ${S.set} sur ${e.sets}`:""}</em>
     </div>
+    ${figureDe(e.n)}
     <ul class="cues">${e.cues.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>
+    <a class="video" href="${esc(videoDe(e.n))}" target="_blank" rel="noopener noreferrer">Voir une vidéo de l'exercice</a>
     ${dials}
   </div>
   <div class="foot">

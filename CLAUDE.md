@@ -22,6 +22,11 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
 1. PROGRAMME — constante `PROGRAM` : 3 séances, chacune avec ses exercices
    (`n`, `type` reps ou time, `sets`, `reps`/`dur`, `rest`, `load`, `def`, `side`, `cues`).
    `estimate()` calcule la durée d'une séance : elle doit rester sous 45 minutes.
+1 bis. FIGURES — `FIG` : une illustration par exercice, dessinée en SVG dans la
+   page. Le pantin tient dans un repère 120×80, sol à y=72 ; un exercice n'est
+   qu'un jeu de coordonnées (tête, épaule, hanche, articulations), le membre le
+   plus éloigné en clair. `figureDe()` rend le SVG, `videoDe()` fabrique le lien
+   de recherche vidéo. Ces schémas donnent la position, pas le détail du geste.
 2. DONNÉES — `localStorage` (clé `workout:data`), export/import JSON, et
    sauvegarde chiffrée : `localSave()` écrit en local, `save()` ajoute
    l'horodatage et déclenche `syncNow()`, `merge()` réunit deux états sans rien
@@ -50,7 +55,12 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
 - Haltères : incrément minimal = 2 × le plus petit disque, un de chaque côté.
 - Le minuteur doit rester exact si l'écran s'éteint ou si l'app passe en arrière-plan.
 - Pas de dépendance externe : le fichier doit fonctionner hors ligne. Le
-  chiffrement passe par `crypto.subtle`, natif au navigateur — rien à charger.
+  chiffrement passe par `crypto.subtle`, natif au navigateur — rien à charger,
+  et les illustrations sont du SVG écrit dans la page, pas des images à aller
+  chercher. Le lien vidéo est le seul élément qui demande le réseau : il pointe
+  sur une recherche, jamais sur une vidéo précise, qui finirait par disparaître.
+- Tout exercice ajouté à `PROGRAM` doit recevoir sa figure dans `FIG`, sous le
+  même nom : c'est la clé qui les relie.
 - `estimate()` doit rester sous 45 minutes à tous les niveaux de difficulté :
   c'est `raiseLevel()` qui en répond, et c'est ce qui justifie les plafonds
   `MAX_REPS`, `MAX_DUR` et le plancher de récupération.
