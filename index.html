@@ -295,7 +295,7 @@ const PROGRAM = [
     {n:"Dips sur banc", type:"reps", sets:3, reps:12, rest:45, load:"bw",
      cues:["Mains au bord du banc, doigts vers l'avant.","Descends jusqu'à 90° au coude, pas en dessous.","Pour durcir : talons posés loin, jambes tendues."]},
     {n:"Extension triceps élastique", type:"reps", sets:2, reps:15, rest:45, load:"band",
-     cues:["Élastique coincé en hauteur ou derrière la nuque.","Coudes fixes et serrés, seuls les avant-bras bougent.","Bloque 1 s bras tendus."]},
+     cues:["Pied arrière sur l'élastique, en fente : c'est ton pied qui fait l'ancrage, rien à accrocher.","L'élastique remonte derrière le dos, les deux mains le tiennent derrière la nuque.","Coudes fixes, serrés et pointés vers l'avant : seuls les avant-bras montent.","Bloque 1 s bras tendus, redescends lentement. Recule le pied pour durcir."]},
     {n:"Roue abdominale", type:"reps", sets:3, reps:8, rest:45, load:"bw",
      cues:["À genoux sur le tapis, bassin rétroversé.","Va seulement aussi loin que tu peux garder le dos plat.","Si le bas du dos se creuse, tu es allé trop loin."]},
     {n:"Étirements", type:"time", sets:1, dur:120, rest:0, load:"none",
@@ -307,7 +307,7 @@ const PROGRAM = [
   focus:"Dos, biceps et gainage. Le rowing barre en ouverture, puis du travail unilatéral pour équilibrer.",
   ex:[
     {n:"Échauffement", type:"time", sets:1, dur:240, rest:0, load:"none",
-     cues:["Cercles de bras et rotations du buste.","Élastique : 20 écartés + 20 tirages visage.","2 séries de 10 au rowing, barre à vide."]},
+     cues:["Cercles de bras et rotations du buste.","Élastique : 20 écartés devant la poitrine, bras tendus.","2 séries de 10 au rowing, barre à vide."]},
     {n:"Rowing barre buste penché", type:"reps", sets:4, reps:10, rest:90, load:"bar", def:30,
      cues:["Buste à ~45°, dos plat, genoux légèrement fléchis.","Tire la barre vers le nombril, coudes le long du corps.","Le buste ne se relève pas pendant la série.","Repose la barre au sol entre chaque série si le bas du dos chauffe."]},
     {n:"Rowing unilatéral haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10, side:true,
@@ -315,7 +315,7 @@ const PROGRAM = [
     {n:"Pullover haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10,
      cues:["Allongé sur le banc plat, un haltère tenu à deux mains.","Descends derrière la tête bras quasi tendus, jusqu'à l'étirement.","Côtes basses : ne cambre pas pour aller plus loin."]},
     {n:"Tirage visage élastique", type:"reps", sets:3, reps:15, rest:45, load:"band",
-     cues:["Élastique fixé à hauteur du visage.","Tire vers le front, coudes hauts et écartés.","Bloque 1 s omoplates serrées."]},
+     cues:["Les deux pieds sur l'élastique, une extrémité dans chaque main : tes pieds font l'ancrage.","Buste penché à 45°, dos plat, comme au rowing.","Tire vers le front, coudes hauts et écartés.","Bloque 1 s omoplates serrées. Écarte les pieds pour durcir."]},
     {n:"Curl biceps haltères", type:"reps", sets:3, reps:12, rest:45, load:"db", def:8,
      cues:["Coudes collés au buste, pas d'élan de hanches.","Descente en 3 s, contrôle total.","Alterne bras par bras si la charge devient limite."]},
     {n:"Gainage planche", type:"time", sets:3, dur:40, rest:45, load:"bw",
@@ -460,12 +460,12 @@ const FIG={
   jambe([58,54],[80,59],[100,70])},
 
 "Extension triceps élastique":{v:"profil", d:
-  /* coudes hauts et fixes près de la tête, seuls les avant-bras montent */
-  bande([84,8],[70,30])+
-  jambe([57,45],[54,58],[54,71],true)+tronc([58,27],[57,45])+
-  bras([58,27],[60,15],[68,22],true)+cou([58,22],[58,27])+tete([55,19],6)+
-  jambe([57,45],[60,58],[60,71])+bras([58,27],[61,15],[69,23],false,true)+
-  axe(61,15,69,23,"coudes fixes",30,16)},
+  /* l'ancrage est le pied arrière : l'élastique remonte derrière le dos jusqu'aux
+     mains, coudes hauts et fixes. Rien à accrocher dans la pièce. */
+  `<path class="band" d="M68 71 Q 74 44 57 23"/>`+
+  jambe([58,45],[64,57],[68,71],true)+tronc([58,27],[58,45])+
+  bras([58,27],[61,16],[54,21],true)+cou([58,22],[58,26])+tete([55,19],6)+
+  jambe([58,45],[54,58],[52,71])+bras([58,27],[62,16],[55,22],false,true)},
 
 "Roue abdominale":{v:"profil", d:
   roue(28,65)+
@@ -500,10 +500,13 @@ const FIG={
   haltTranche(99,31)},
 
 "Tirage visage élastique":{v:"profil", d:
-  bande([12,30],[44,30])+
-  jambe([62,45],[59,58],[59,71],true)+tronc([63,28],[62,45])+
-  bras([63,28],[53,25],[45,30],true)+cou([64,23],[63,28])+tete([65,19],6)+
-  jambe([62,45],[65,58],[65,71])+bras([63,28],[54,24],[46,29],false,true)},
+  /* ancré sous les deux pieds, buste penché à 45° : la traction redevient
+     horizontale par rapport au tronc, sans rien fixer au mur. */
+  `<path class="band" d="M74 70 Q 60 52 49 28"/>`+
+  jambe([74,45],[77,58],[75,71],true)+jambe([74,45],[75,58],[73,71])+
+  tronc([50,32],[74,45])+bras([50,32],[60,29],[49,26],true)+
+  cou([45,28],[50,32])+tete([42,25],26)+bras([50,32],[61,29],[50,27],false,true)+
+  axe(48,32,74,45,"45°",64,34)+`<path class="axe" d="M74 45 L74 30"/>`},
 
 "Curl biceps haltères":{v:"profil", d:
   jambe([58,46],[55,58],[55,71],true)+jambe([58,46],[61,58],[61,71])+

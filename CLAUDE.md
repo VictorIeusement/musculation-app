@@ -107,6 +107,10 @@ police Google est une dépendance réseau, et le fichier doit fonctionner hors
 ligne.
 
 ## Contraintes à respecter
+- Aucun exercice à l'élastique ne doit supposer un point d'ancrage fixe dans la
+  pièce : l'utilisateur n'en a pas. L'ancrage est le pied ou la main libre, et
+  il doit se voir sur le schéma. Le réglage de charge est la longueur utile —
+  reculer le pied, écarter les pieds.
 - Charges de barre : uniquement les combinaisons symétriques calculées par
   `buildLoads()` à partir de l'inventaire. Ne jamais proposer une charge non composable.
 - Haltères : incrément minimal = 2 × le plus petit disque, un de chaque côté.

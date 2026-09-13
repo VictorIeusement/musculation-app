@@ -100,6 +100,15 @@ de vidéo finit toujours par mourir, une recherche non, et elle remonte ce qui s
 fait de mieux au moment où on la lance. C'est le seul élément de l'app qui
 demande le réseau.
 
+## Élastique, sans rien à accrocher
+
+Aucun exercice ne suppose un point d'ancrage dans la pièce : c'est le corps qui
+tend l'élastique. Extension triceps, le pied arrière est posé dessus en fente et
+la bande remonte derrière le dos ; tirage visage, les deux pieds sont dessus et
+le buste se penche à 45°, ce qui rend la traction horizontale par rapport au
+tronc. Reculer le pied ou écarter les pieds durcit l'exercice — c'est le réglage
+de charge de l'élastique. Les schémas montrent l'ancrage.
+
 ## Niveau de difficulté
 
 Chaque séance (A, B, C) porte son propre niveau, conservé d'une fois sur l'autre
