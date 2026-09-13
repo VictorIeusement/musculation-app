@@ -42,8 +42,17 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il
    tient le budget de 45 minutes et refuse un cran qui ne changerait rien.
 3. SON, VIBRATION, VEILLE — `AudioContext` créé au premier geste utilisateur, `wakeLock`.
-4. TIMER — décompte basé sur un horodatage de fin, pour rester juste après une mise en arrière-plan.
-5. ÉTAT DE SÉANCE, 6. RENDU, 7. INTERACTIONS, 8. DÉMARRAGE.
+4. TIMER — décompte basé sur un horodatage de fin, pour rester juste après une
+   mise en arrière-plan. `stop()` exécute la suite du minuteur, `cancel()` le
+   referme sans l'exécuter : quitter ou sauter un exercice pendant une
+   récupération passe par `cancel()`, sinon la séance avancerait au passage.
+5. ÉTAT DE SÉANCE — `S` en mémoire, recopié dans `DATA.cur` à chaque changement
+   par `saveCur()` (appelé depuis `render()`), relu au démarrage par
+   `reprendre()`. La séance en cours reste locale : exclue du PUT, conservée
+   telle quelle par `merge()`. `validateSet()` fait avancer la séance **une
+   seule fois** ; la récupération ne fait que s'afficher par-dessus et sa fin ne
+   rejoue pas l'avancement.
+6. RENDU, 7. INTERACTIONS, 8. DÉMARRAGE.
    Côté accueil : `nextSession()` choisit la séance mise en avant — le cycle
    `DATA.nextIdx`, sauf si la semaine en cours est vide, auquel cas on repart de
    A. `paramsOf()` rend les paramètres réels d'un exercice (séries, répétitions,
@@ -66,3 +75,6 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
   `MAX_REPS`, `MAX_DUR` et le plancher de récupération.
 - Ne jamais envoyer l'état en clair au serveur, ni écrire la phrase ailleurs que
   dans le `localStorage` de l'appareil.
+- Une séance en cours ne se perd que par « Arrêter », et seulement après deux
+  confirmations. Ni un rafraîchissement, ni un onglet fermé, ni l'app tuée par
+  le téléphone ne doivent coûter quoi que ce soit.

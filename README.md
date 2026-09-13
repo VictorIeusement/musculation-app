@@ -67,6 +67,21 @@ payé en récupération, et s'il ne rentre toujours pas il est refusé plutôt q
 d'allonger la séance. Quand le matériel est saturé, l'app le dit au lieu de
 faire monter un compteur qui ne change rien.
 
+## Séance en cours
+
+L'avancée est enregistrée au fur et à mesure, à chaque série validée, chaque
+charge ajustée, chaque exercice passé. Rafraîchir la page, fermer l'onglet ou
+laisser le téléphone tuer l'app ne coûte rien : la séance est retrouvée à la
+même série, avec les séries déjà faites, et la récupération reprend son décompte
+là où elle en était. Un rafraîchissement accidentel demande d'abord confirmation.
+
+Le seul moyen de perdre une séance en cours est le bouton « Arrêter », en haut à
+droite, qui propose d'abord de l'enregistrer puis fait confirmer l'abandon. Une
+séance laissée en plan plus de douze heures est considérée comme abandonnée.
+
+Cette séance reste sur l'appareil : elle n'est ni envoyée au serveur, ni
+synchronisée avec l'autre appareil. Seule la séance terminée l'est.
+
 ## Données
 
 Les séances vivent dans le `localStorage` du navigateur, clé `workout:data`.

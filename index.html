@@ -436,7 +436,7 @@ function figureDe(nom){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null};
 let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
@@ -476,7 +476,7 @@ function merge(a,b){
     gear:newer.gear||older.gear,
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
-    sync:a.sync, syncedAt:a.syncedAt
+    sync:a.sync, syncedAt:a.syncedAt, cur:a.cur
   };
 }
 
@@ -541,7 +541,7 @@ async function syncNow(silent){
       }
     } else if(body&&body.history) remote=body; // sauvegarde d'avant le chiffrement
     if(remote&&remote.history) DATA=merge(DATA,remote);
-    const payload=Object.assign({},DATA); delete payload.sync; delete payload.syncedAt;
+    const payload=Object.assign({},DATA); delete payload.sync; delete payload.syncedAt; delete payload.cur;
     const p=await fetch(s.url,{method:"PUT",headers:Object.assign({"content-type":"application/json"},head),body:JSON.stringify(await seal(payload,k.key))});
     if(!p.ok) throw new Error("put");
     DATA.syncedAt=Date.now(); localSave();
@@ -770,6 +770,12 @@ const Timer={
     this.running=false; clearInterval(this.int);
     sheet.classList.add("hidden"); sheet.classList.remove("alarm");
     const cb=this.done; this.done=null; if(cb) cb();
+  },
+  /* referme le minuteur sans exécuter sa suite : pour quitter ou sauter un
+     exercice pendant une récupération, sans faire avancer la séance au passage */
+  cancel(){
+    this.running=false; clearInterval(this.int); this.done=null;
+    sheet.classList.add("hidden"); sheet.classList.remove("alarm");
   }
 };
 
@@ -777,6 +783,37 @@ const Timer={
    5. ÉTAT DE SÉANCE
    ========================================================= */
 let S=null; // {p, i, set, log:[], t0}
+
+/* La séance en cours est réécrite dans le stockage à chaque changement, et
+   relue au démarrage : un rafraîchissement, un onglet fermé ou une app tuée par
+   le téléphone ne coûtent plus rien. Seul « Arrêter » l'efface. Elle reste sur
+   l'appareil : ni envoyée au serveur, ni fusionnée avec l'autre appareil. */
+const REPRISE=12*3600*1000;   // au-delà, la séance est tenue pour abandonnée
+
+function saveCur(){
+  if(!S) return;
+  DATA.cur={idx:S.idx, i:S.i, set:S.set, log:S.log, w:S.w, reps:S.reps,
+            ecoule:Date.now()-S.t0, at:Date.now(),
+            recup:(Timer.running&&!Timer.fired)?Timer.end:0};
+  localSave();
+}
+function clearCur(){ DATA.cur=null; localSave(); }
+
+function reprendre(){
+  const c=DATA.cur;
+  if(!c||c.idx==null) return false;
+  const p=PROGRAM[c.idx];
+  /* on ne reprend ni une séance d'un autre programme, ni une séance d'hier */
+  if(!p||!Array.isArray(c.w)||c.w.length!==p.ex.length||Date.now()-(c.at||0)>REPRISE){
+    DATA.cur=null; return false;
+  }
+  S={idx:c.idx, p, i:Math.min(c.i||0,p.ex.length-1), set:Math.max(1,c.set||1),
+     log:c.log||[], w:c.w, reps:c.reps, t0:Date.now()-(c.ecoule||0)};
+  keepAwake(true);
+  const reste=(c.recup||0)-Date.now();
+  if(reste>1000) Timer.start(reste/1000,"Récupération",render);
+  return true;
+}
 
 function startSession(idx){
   audioOn(); keepAwake(true);
@@ -788,22 +825,18 @@ function startSession(idx){
 
 function curEx(){ return S.p.ex[S.i]; }
 
+/* Une série validée fait avancer la séance une fois, tout de suite. La
+   récupération ne fait que s'afficher par-dessus : sa fin ne rejoue pas
+   l'avancement — c'est ce doublon qui faisait sauter une série sur deux. */
 function validateSet(){
   const e=curEx();
   if(e.type==="reps"&&e.load!=="none"){
     S.log.push({n:e.n, w:S.w[S.i], r:S.reps[S.i], load:e.load, side:!!e.side});
   }
-  const last = S.set>=e.sets;
-  const lastEx = S.i>=S.p.ex.length-1;
-  if(!last||!lastEx){
-    const rest=getRest(S.p.id,e);
-    if(rest>0){
-      Timer.start(rest,"Récupération",()=>{ advance(); render(); });
-      if(last) advance(); else S.set++;
-      return;
-    }
-  }
-  if(last) advance(); else S.set++;
+  advance();
+  if(S.i>=S.p.ex.length) return finish();   // dernier exercice : on termine ici
+  const rest=getRest(S.p.id,e);
+  if(rest>0) Timer.start(rest,"Récupération",render);
   render();
 }
 function advance(){
@@ -813,7 +846,7 @@ function advance(){
 
 function startWork(){
   const e=curEx();
-  Timer.start(getD(S.p.id,e), e.n, ()=>{ validateSet(); render(); });
+  Timer.start(getD(S.p.id,e), e.n, validateSet);
 }
 
 /* Séance trop facile : un cran de plus, tout de suite. Les séries déjà
@@ -843,6 +876,7 @@ async function finish(){
   DATA.history=DATA.history.slice(0,60);
   S.p.ex.forEach((e,i)=>{ if(e.load==="bar"||e.load==="db") DATA.weights[wKey(S.p.id,e)]=S.w[i]; });
   DATA.nextIdx=(S.idx+1)%PROGRAM.length;
+  DATA.cur=null;
   await save();
   const done={mins,vol:Math.round(vol),sets,name:S.p.name,id:S.p.id,log:S.log};
   S=null; renderDone(done);
@@ -1088,7 +1122,7 @@ function renderDone(d){
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
 }
 
-function render(){ S?renderSession():renderHome(); }
+function render(){ if(S) saveCur(); S?renderSession():renderHome(); }
 
 /* =========================================================
    7. INTERACTIONS
@@ -1136,18 +1170,23 @@ view.addEventListener("click",ev=>{
   }
   if(b.id==="go"){ const e=curEx(); return e.type==="time"?startWork():(validateSet(),render()); }
   if(b.id==="skip"){
-    Timer.stop(); S.i++; S.set=1;
+    Timer.cancel(); S.i++; S.set=1;
     if(S.i>=S.p.ex.length) return finish();
     return render();
   }
   if(b.id==="prev"){
-    Timer.stop();
+    Timer.cancel();
     if(S.set>1) S.set--; else if(S.i>0){ S.i--; S.set=S.p.ex[S.i].sets; }
     return render();
   }
   if(b.id==="quit"){
-    if(S.log.length && confirm("Enregistrer la séance telle quelle ?")) return finish();
-    keepAwake(false); S=null; Timer.stop(); return render();
+    /* Le seul endroit où l'on perd une séance en cours, et jamais par accident :
+       on demande d'abord si on l'enregistre, puis on confirme l'abandon. */
+    if(S.log.length){
+      if(confirm("Enregistrer la séance telle quelle ?")) return finish();
+      if(!confirm("Abandonner la séance ? Les séries déjà faites seront perdues.")) return;
+    }
+    keepAwake(false); Timer.cancel(); S=null; clearCur(); return render();
   }
   if(b.dataset.w){
     const e=curEx(), list=e.load==="bar"?BAR:DB;
@@ -1200,10 +1239,13 @@ view.addEventListener("pointercancel",endSwipe);
 el("t-toggle").onclick=()=>Timer.toggle();
 el("t-plus").onclick=()=>Timer.add(15);
 el("t-minus").onclick=()=>Timer.add(-15);
-el("t-skip").onclick=()=>{
-  Timer.stop();
-  if(S && S.i>=S.p.ex.length) finish(); else render();
-};
+/* Le minuteur porte sa propre suite : récupération → réaffichage, travail
+   chronométré → série validée. Rien à décider ici. */
+el("t-skip").onclick=()=>Timer.stop();
+
+/* Dernier garde-fou : un rafraîchissement accidentel demande confirmation.
+   Même s'il est accepté, la séance est retrouvée intacte au rechargement. */
+window.addEventListener("beforeunload",e=>{ if(S){ e.preventDefault(); e.returnValue=""; } });
 
 /* reprise correcte après mise en arrière-plan */
 view.addEventListener("change",ev=>{
@@ -1222,7 +1264,10 @@ document.addEventListener("visibilitychange",()=>{
    8. DÉMARRAGE
    ========================================================= */
 (async()=>{
-  await load(); render();
+  await load();
+  const reprise=reprendre();
+  render();
+  if(reprise) toast("Séance reprise là où tu t'étais arrêté");
   if(await syncNow(true) && !S) render();
 })();
 
