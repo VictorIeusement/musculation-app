@@ -31,6 +31,27 @@ La séance mise en avant suit le cycle A → B → C, sauf quand la semaine en c
 ne compte aucune séance : le programme est hebdomadaire, on repart alors de A
 plutôt que de reprendre le cycle laissé en plan la semaine d'avant.
 
+## Suivi du poids et de la composition corporelle
+
+L'écran « Suivi » affiche l'évolution du poids, de la masse musculaire et de la
+masse grasse, alimenté par un export de balance.
+
+Sur le site de Withings : compte → télécharger mes données ; dans l'archive
+reçue, c'est `weight.csv` qu'on importe. Les exports d'autres balances passent
+aussi, tant que le fichier a une colonne de date et au moins une colonne de
+mesure : les entêtes sont reconnues en français comme en anglais, le séparateur
+est deviné, et les décimales à virgule sont acceptées. Réimporter le même
+fichier ne duplique rien ; une mesure par jour est conservée, la plus tardive.
+
+Trois petits graphiques plutôt qu'un seul : les trois mesures n'ont pas le même
+ordre de grandeur, et sur un axe commun les variations de poids — ce qu'on vient
+regarder — seraient écrasées à plat. Un doigt glissé sur les courbes affiche les
+valeurs d'une date ; le tableau en dessous donne les mêmes chiffres sans couleur.
+
+Il n'y a pas de connexion automatique à Withings : leur API demande un secret
+qui n'a pas sa place dans un dépôt public, et l'appel direct depuis un
+navigateur est refusé. Il faudrait passer par le Worker de `sync/`.
+
 ## Illustrations et vidéos
 
 Chaque exercice est accompagné, pendant la séance, d'un schéma montrant la

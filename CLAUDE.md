@@ -37,6 +37,12 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    PUT : sinon on écraserait une sauvegarde encore bonne.
    Les séances supprimées laissent leur date dans `DATA.deleted`, que `merge()`
    respecte — sans quoi la copie du serveur les ferait revenir.
+2 ter. COMPOSITION CORPORELLE — `DATA.body`, une mesure par jour importée d'un
+   export de balance. `lireCSV()` devine le séparateur sur la ligne d'entête et
+   lui seul découpe (un export français sépare en `;` et écrit ses décimales en
+   `,`) ; `lireBalance()` reconnaît les colonnes par mots-clés, français comme
+   anglais, et lève un message explicite plutôt que d'inventer. `fusionCorps()`
+   déduplique par jour, la mesure la plus tardive l'emportant.
 2 bis. NIVEAU DE DIFFICULTÉ — `DATA.level` par séance, `DATA.reps`, `DATA.dur`,
    `DATA.rest` par exercice. `levelUp()` applique un cran (répétitions, puis
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il
@@ -53,6 +59,13 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    seule fois** ; la récupération ne fait que s'afficher par-dessus et sa fin ne
    rejoue pas l'avancement.
 6. RENDU, 7. INTERACTIONS, 8. DÉMARRAGE.
+   Écran « Suivi » : `courbes()` trace trois petits graphiques superposés plutôt
+   qu'un axe commun — poids, masse musculaire et masse grasse n'ont pas le même
+   ordre de grandeur, et un axe partagé écraserait les variations de poids. Un
+   tracé par cadre, donc pas de légende : le titre nomme la série. Les trois
+   teintes de `SERIES` sont validées pour les daltonismes ; ne pas les changer
+   sans revalider. Le tableau sous les courbes est la version lisible sans
+   couleur, et il ne doit pas disparaître.
    Côté accueil : `nextSession()` choisit la séance mise en avant — le cycle
    `DATA.nextIdx`, sauf si la semaine en cours est vide, auquel cas on repart de
    A. `paramsOf()` rend les paramètres réels d'un exercice (séries, répétitions,
@@ -75,6 +88,8 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
   `MAX_REPS`, `MAX_DUR` et le plancher de récupération.
 - Ne jamais envoyer l'état en clair au serveur, ni écrire la phrase ailleurs que
   dans le `localStorage` de l'appareil.
+- Jamais de second axe vertical sur un même graphique : deux échelles côte à
+  côte inventent une corrélation. Deux mesures d'ordres différents, deux cadres.
 - Une séance en cours ne se perd que par « Arrêter », et seulement après deux
   confirmations. Ni un rafraîchissement, ni un onglet fermé, ni l'app tuée par
   le téléphone ne doivent coûter quoi que ce soit.
