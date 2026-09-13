@@ -21,6 +21,17 @@ Chaque `git push` redéploie en une minute environ.
 Après modification, penser à `git push` : le service worker sert le réseau en
 priorité, donc la nouvelle version arrive dès que le téléphone est connecté.
 
+## Habillage
+
+Fond sombre, chiffres lumineux, un seul accent vert pour ce qui est actif ou
+primaire. Le choix n'est pas décoratif : le téléphone se lit posé par terre ou
+sur le banc, à un mètre, les mains moites. Tous les couples texte/fond tiennent
+au-dessus du seuil de lisibilité et toutes les commandes font au moins 44 px.
+
+La police est celle du système. La direction prévoyait Space Grotesk, mais une
+police chargée depuis Google est une dépendance réseau, et l'app doit fonctionner
+hors ligne.
+
 ## Accueil
 
 L'écran d'accueil liste les exercices de la prochaine séance avec leurs

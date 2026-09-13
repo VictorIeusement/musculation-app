@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Salle à la maison</title>
-<meta name="theme-color" content="#E7E8E3">
+<meta name="theme-color" content="#0E1013">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icone-192.png">
 <link rel="apple-touch-icon" href="icone-180.png">
-<style>html,body{margin:0;padding:0;background:#E7E8E3;min-height:100%}</style>
+<style>html,body{margin:0;padding:0;background:#0E1013;min-height:100%}</style>
 </head>
 <body>
 <div id="app">
@@ -22,6 +22,7 @@
       <div class="t-label" id="t-label">Récupération</div>
       <div class="t-count" id="t-count">01:30</div>
       <div class="t-bar"><span id="t-fill"></span></div>
+      <div class="ensuite" id="t-next"></div>
       <div class="t-actions">
         <button class="ghost" id="t-minus">−15 s</button>
         <button class="ghost" id="t-toggle">Pause</button>
@@ -34,15 +35,20 @@
 </div>
 
 <style>
+  /* Direction « cockpit » : fond sombre, chiffres lumineux, un seul accent pour
+     ce qui est actif. Tous les couples texte/fond sont au-dessus de 4,5:1 —
+     l'ancien gris secondaire plafonnait à 3,47:1.
+     --ink 16,5:1 · --steel 7,5:1 · --signal 11,3:1 · --hot 6,8:1 */
   :root{
-    --concrete:#E7E8E3;
-    --concrete-2:#DCDED7;
-    --ink:#15171B;
-    --ink-soft:#23262C;
-    --steel:#767B80;
-    --signal:#0F4FD8;
-    --hot:#D93A1E;
-    --line:rgba(21,23,27,.14);
+    --concrete:#0E1013;        /* le fond de la page */
+    --concrete-2:#2A2F36;      /* commandes au repos */
+    --surface:#171A1F;         /* cartes et feuilles posées sur le fond */
+    --ink:#EDEFF2;
+    --ink-soft:#C3C9D2;
+    --steel:#9BA3AE;
+    --signal:#57E08A;
+    --hot:#FF6B4A;
+    --line:rgba(237,239,242,.12);
     --r:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -53,7 +59,7 @@
     min-height:100%;
     max-width:520px;
     margin:0 auto;
-    padding:0 0 96px;
+    padding:0 0 128px;
     position:relative;
     overflow-x:hidden;
   }
@@ -64,6 +70,8 @@
   .top{padding:26px 20px 18px;border-bottom:1px solid var(--line)}
   .top h1{font-size:15px;font-weight:800;letter-spacing:-.01em}
   .top .sub{font-size:13px;color:var(--steel);margin-top:3px}
+  .top button.sub{min-height:44px;padding:0 10px;border-radius:11px;background:var(--concrete-2);
+                  color:var(--ink);font-weight:600;text-decoration:none}
 
   /* ---------- home ---------- */
   .hero{padding:24px 20px 28px;border-bottom:1px solid var(--line)}
@@ -75,7 +83,7 @@
 
   .cta{
     display:block;width:calc(100% - 40px);margin:20px;padding:19px;
-    background:var(--ink);color:var(--concrete);border-radius:var(--r);
+    background:var(--signal);color:var(--concrete);border-radius:var(--r);
     font-size:17px;font-weight:700;letter-spacing:-.01em;text-align:center;
   }
   .cta:active{transform:translateY(1px)}
@@ -88,10 +96,10 @@
     width:100%;text-align:left;
   }
   .row .tag{
-    width:34px;height:34px;flex:none;border-radius:9px;background:var(--ink);color:var(--concrete);
+    width:34px;height:34px;flex:none;border-radius:9px;background:var(--concrete-2);color:var(--ink);
     display:grid;place-items:center;font-weight:800;font-size:15px;
   }
-  .row.next .tag{background:var(--signal)}
+  .row.next .tag{background:var(--signal);color:var(--concrete)}
   .row .rt{flex:1;min-width:0}
   .row .rt strong{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em}
   .row .rt span{display:block;font-size:13px;color:var(--steel);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -112,7 +120,7 @@
   .swipe{position:relative;overflow:hidden}
   .swipe .hist{position:relative;z-index:1;background:var(--concrete);transition:transform .18s ease;touch-action:pan-y}
   .swipe.open .hist{transform:translateX(-108px)}
-  .swipe-del{position:absolute;top:1px;right:0;bottom:0;width:108px;background:var(--hot);color:#fff;
+  .swipe-del{position:absolute;top:1px;right:0;bottom:0;width:108px;background:var(--hot);color:var(--concrete);
              font-size:14px;font-weight:700;letter-spacing:-.01em}
   .hist .lvl{font-style:normal;font-size:12px;font-weight:600;color:var(--steel);flex:none}
 
@@ -133,22 +141,23 @@
   .sets i.now{background:var(--signal)}
   .sets em{font-style:normal;font-size:13px;color:var(--steel);margin-left:6px}
 
-  .fig{display:block;width:calc(100% - 40px);height:158px;margin:16px 20px 0;
-       background:rgba(255,255,255,.45);border:1px solid var(--line);border-radius:var(--r);
-       stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
-  .fig .tete{fill:var(--ink);stroke:none}
-  .fig .loin{opacity:.34}
-  .fig .sol{stroke:rgba(21,23,27,.22);stroke-width:2}
-  .fig .banc{stroke:var(--steel)}
-  .fig .banc rect{fill:var(--steel);stroke:none}
-  .fig .mat{stroke:var(--signal)}
-  .fig .mat rect,.fig .mat circle{fill:var(--signal);stroke:none}
-  .fig .band{stroke:var(--signal);stroke-width:2.2;stroke-dasharray:4 3}
+  .fig{display:block;width:calc(100% - 32px);height:150px;margin:16px;
+       background:var(--surface);border-radius:var(--r)}
+  .fig .m{stroke:var(--ink);fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .fig .t{fill:var(--ink)}
+  .fig .loin{opacity:.28}
+  .fig .sol{stroke:rgba(237,239,242,.18);stroke-width:1.6}
+  .fig .mat{stroke:var(--signal);stroke-linecap:round}
+  .fig .matf{fill:var(--signal)}
+  .fig .banc{fill:var(--steel)}
+  .fig .band{stroke:var(--signal);fill:none;stroke-width:1.8;stroke-dasharray:3.5 2.5}
+  .fig .axe{stroke:var(--signal);fill:none;stroke-width:.9;stroke-dasharray:2.5 2}
+  .fig .axeT{fill:var(--signal);font:600 5.5px system-ui}
   /* ---------- suivi corporel ---------- */
   .plages{display:flex;gap:8px;padding:14px 0 2px}
-  .plages button{padding:7px 13px;border-radius:9px;background:var(--concrete-2);
-                 font-size:13px;font-weight:600;color:var(--ink-soft)}
-  .plages button.actif{background:var(--ink);color:var(--concrete)}
+  .plages button{min-height:44px;padding:0 16px;border-radius:11px;background:var(--concrete-2);
+                 font-size:13px;font-weight:600;color:var(--ink)}
+  .plages button.actif{background:var(--signal);color:var(--concrete)}
   .courbes{display:block;width:100%;margin-top:6px;overflow:visible;
            touch-action:pan-y;user-select:none;-webkit-user-select:none}
   .courbes .trace{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -165,43 +174,48 @@
   .tab td:first-child{text-align:left;color:var(--steel)}
   .pastille{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:1px}
 
-  .video{display:block;margin:14px 20px 0;font-size:13px;color:var(--steel);
+  .video{display:block;margin:6px 20px 0;padding:14px 0;font-size:13px;color:var(--steel);
          text-decoration:underline;text-underline-offset:3px}
 
-  .cues{margin:20px 20px 0;padding:16px 16px 16px 18px;background:rgba(21,23,27,.045);border-radius:var(--r)}
+  .cues{margin:20px 20px 0;padding:16px 16px 16px 18px;background:var(--surface);border-radius:var(--r)}
   .cues li{font-size:14px;line-height:1.5;color:var(--ink-soft);margin-bottom:7px;list-style:none;position:relative;padding-left:14px}
   .cues li:last-child{margin-bottom:0}
   .cues li:before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--steel)}
 
   .dials{display:flex;gap:12px;padding:20px 20px 0}
-  .dial{flex:1;border:1px solid var(--line);border-radius:var(--r);padding:12px 10px;text-align:center;background:rgba(255,255,255,.4)}
+  .dial{flex:1;border:0;border-radius:var(--r);padding:12px 10px;text-align:center;background:var(--surface)}
   .dial .dl{font-size:12px;color:var(--steel)}
   .dial .dv{font-size:27px;font-weight:800;letter-spacing:-.03em;margin:4px 0 2px;font-variant-numeric:tabular-nums}
   .dial .dh{font-size:11px;color:var(--steel);min-height:14px;line-height:1.2}
   .dial .pm{display:flex;gap:8px;margin-top:10px}
   .dial .pm button{flex:1;height:38px;border-radius:9px;background:var(--concrete-2);font-size:19px;font-weight:700;line-height:1}
-  .dial .pm button:active{background:var(--ink);color:var(--concrete)}
+  .dial .pm button:active{background:var(--signal);color:var(--concrete)}
 
   .foot{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;padding:12px 20px 16px;
-        background:linear-gradient(to top,var(--concrete) 72%,rgba(231,232,227,0));}
-  .solid{display:block;width:100%;padding:18px;border-radius:var(--r);background:var(--ink);color:var(--concrete);font-size:17px;font-weight:700;text-align:center}
+        background:linear-gradient(to top,var(--concrete) 72%,rgba(14,16,19,0));}
+  .solid{display:block;width:100%;padding:18px;border-radius:var(--r);background:var(--signal);color:var(--concrete);font-size:17px;font-weight:700;text-align:center}
   .solid.blue{background:var(--signal)}
   .solid:active{transform:translateY(1px)}
-  .under{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
-  .under button{font-size:13px;color:var(--steel);padding:6px 2px;text-decoration:underline;text-underline-offset:3px}
+  .under{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+  .under button{flex:1;min-height:44px;font-size:13px;font-weight:600;color:var(--steel);padding:6px 2px}
 
   /* ---------- timer sheet ---------- */
-  .sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--ink);color:var(--concrete);
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--surface);color:var(--ink);
          border-radius:20px 20px 0 0;padding:22px 20px 24px;z-index:40;transition:transform .22s ease}
   .sheet.hidden{transform:translateY(105%)}
   .sheet.alarm{background:var(--hot)}
   .t-label{font-size:13px;opacity:.65}
   .t-count{font-size:68px;font-weight:800;letter-spacing:-.045em;line-height:1;margin:4px 0 14px;font-variant-numeric:tabular-nums}
-  .t-bar{height:4px;background:rgba(231,232,227,.22);border-radius:2px;overflow:hidden}
-  .t-bar span{display:block;height:100%;width:100%;background:var(--concrete);border-radius:2px}
-  .t-actions{display:flex;gap:10px;margin:16px 0 12px}
-  .ghost{flex:1;padding:13px;border-radius:11px;background:rgba(231,232,227,.14);color:var(--concrete);font-size:14px;font-weight:600}
-  .sheet .solid{background:var(--concrete);color:var(--ink)}
+  .t-bar{height:4px;background:rgba(237,239,242,.18);border-radius:2px;overflow:hidden}
+  .t-bar span{display:block;height:100%;width:100%;background:var(--ink);border-radius:2px}
+  .ensuite{margin:16px 0 0;padding:13px 15px;border-radius:12px;background:var(--concrete-2)}
+  .ensuite .el{font-size:12px;color:var(--steel)}
+  .ensuite .en{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-top:3px}
+  .ensuite .ep{font-size:13px;color:var(--steel);margin-top:2px;font-variant-numeric:tabular-nums}
+  .ensuite.vide{display:none}
+  .t-actions{display:flex;gap:10px;margin:14px 0 12px}
+  .ghost{flex:1;padding:15px 13px;border-radius:11px;background:var(--concrete-2);color:var(--ink);font-size:14px;font-weight:600}
+  .sheet .solid{background:var(--signal);color:var(--concrete)}
 
   /* ---------- summary ---------- */
   .sum{padding:30px 20px 0}
@@ -213,17 +227,17 @@
   .lines div{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
   .lines span{color:var(--steel);font-variant-numeric:tabular-nums;flex:none}
 
-  #toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,14px);background:var(--ink);color:var(--concrete);
+  #toast{position:fixed;left:50%;bottom:104px;transform:translate(-50%,14px);background:var(--concrete-2);color:var(--ink);
          padding:11px 16px;border-radius:11px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:88%}
   #toast.show{opacity:1;transform:translate(-50%,0)}
 
   .gline{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
   .gline label{flex:1;font-size:15px}
-  .gline input{width:84px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.55);
+  .gline input{width:84px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);
                font:700 17px system-ui;color:var(--ink);text-align:center;font-variant-numeric:tabular-nums}
   .gline em{font-style:normal;font-size:13px;color:var(--steel);width:52px}
-  .gline .del{font-size:13px;color:var(--steel);text-decoration:underline;text-underline-offset:3px}
-  .gline .add{padding:11px 14px;border-radius:10px;background:var(--ink);color:var(--concrete);font-size:14px;font-weight:600}
+  .gline .del{min-height:44px;padding:0 8px;font-size:13px;color:var(--steel);text-decoration:underline;text-underline-offset:3px}
+  .gline .add{padding:13px 14px;border-radius:10px;background:var(--concrete-2);color:var(--ink);font-size:14px;font-weight:600}
   .back{padding:22px 20px 0;font-size:13px;color:var(--steel)}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
@@ -348,98 +362,200 @@ function estimate(p){
 /* =========================================================
    1 bis. FIGURES
    Une illustration par exercice, dessinée en SVG dans la page : rien à charger,
-   rien à mettre en cache, ça marche hors ligne comme le reste. Le pantin tient
-   dans un repère 120×80, sol à y=72 ; chaque exercice n'est qu'un jeu de
-   coordonnées (tête, épaule, hanche, articulations). Le membre le plus éloigné
-   est tracé en clair, pour qu'on lise de quel côté on se place.
-   Ces schémas donnent la position, pas le détail du geste : les consignes de
-   l'exercice et le lien vidéo sont là pour ça.
-   ========================================================= */
-const L=(a,b)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+   rien à mettre en cache, ça marche hors ligne comme le reste.
 
-function corps(c){
-  let s="";
-  if(c.g2) s+=`<g class="loin">${L(c.h,c.g2)}${L(c.g2,c.p2)}</g>`;
-  if(c.c2) s+=`<g class="loin">${L(c.e,c.c2)}${L(c.c2,c.m2)}</g>`;
-  s+=L(c.e,c.h);
-  if(c.g) s+=L(c.h,c.g)+L(c.g,c.p);
-  if(c.c) s+=L(c.e,c.c)+L(c.c,c.m);
-  s+=`<circle cx="${c.t[0]}" cy="${c.t[1]}" r="5.5" class="tete"/>`;
-  return s;
-}
-function barre(a,b){
-  const d=`<rect x="-1.6" y="-5" width="3.2" height="10" rx="1"/>`;
-  return `<g class="mat"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>
-   <g transform="translate(${a[0]},${a[1]})">${d}</g><g transform="translate(${b[0]},${b[1]})">${d}</g></g>`;
-}
-const halt=(x,y)=>`<g class="mat" transform="translate(${x},${y})">
-  <line x1="-3.5" y1="0" x2="3.5" y2="0"/><rect x="-5.5" y="-3.5" width="2.8" height="7" rx="1"/><rect x="2.7" y="-3.5" width="2.8" height="7" rx="1"/></g>`;
-/* banc : plateau (éventuellement incliné) et deux pieds au sol */
-const banc=(x1,y1,x2,y2)=>`<g class="banc"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>
-   <line x1="${x1+5}" y1="${y1+(y2-y1)*0.08}" x2="${x1+5}" y2="72"/>
-   <line x1="${x2-5}" y1="${y2-(y2-y1)*0.08}" x2="${x2-5}" y2="72"/></g>`;
-const bande=(a,b)=>`<path class="band" d="M${a[0]} ${a[1]} Q ${(a[0]+b[0])/2+4} ${(a[1]+b[1])/2} ${b[0]} ${b[1]}"/>`;
+   Pictogramme réglé sur environ huit têtes, dans un repère 120×80, sol à y=72.
+   Les épaisseurs sont hiérarchisées — cuisse 5, mollet 4, bras 3,6, avant-bras 3
+   — et le tronc est une forme pleine qui porte les articulations : des membres
+   d'égale largeur et une tête ronde surdimensionnée ne peuvent faire qu'un
+   pantin enfantin. Le membre qui passe devant le corps est d'abord tracé à la
+   couleur du fond, un peu plus large : sans ce liseré il se fond dans le tronc
+   et le geste devient illisible sur les mouvements penchés.
+
+   Vue de profil, sauf mention. Conséquence à respecter : une barre dont l'axe
+   traverse les épaules s'y voit PAR LA TRANCHE, donc comme un disque, jamais
+   comme un trait horizontal — dessiner une barre vue de face sur un corps vu de
+   profil laisse croire qu'elle est dans l'axe du corps. Les exercices dont le
+   geste se perd de profil, comme les élévations latérales, sont dessinés de
+   face et le disent dans leur description.
+
+   Ces schémas donnent la position et l'angle qui décide de la technique ; les
+   consignes de l'exercice et le lien vidéo portent le reste.
+   ========================================================= */
+
+const L=(a,b,w,loin=false,sep=false)=>
+  (sep?`<path style="stroke:var(--surface);fill:none;stroke-linecap:round;stroke-width:${w+2.2}" d="M${a[0]} ${a[1]} L${b[0]} ${b[1]}"/>`:"")+
+  `<path class="m${loin?" loin":""}" style="stroke-width:${w}" d="M${a[0]} ${a[1]} L${b[0]} ${b[1]}"/>`;
+const tronc=(e,h,we=9,wh=7.5)=>{const dx=h[0]-e[0],dy=h[1]-e[1],Lg=Math.hypot(dx,dy)||1,nx=-dy/Lg,ny=dx/Lg;
+  const p=(pt,w,s)=>`${pt[0]+nx*w/2*s},${pt[1]+ny*w/2*s}`;
+  return `<path class="t" d="M${p(e,we,1)} L${p(h,wh,1)} L${p(h,wh,-1)} L${p(e,we,-1)} Z"/>`;};
+const tete=(c,a=0)=>`<ellipse class="t" cx="${c[0]}" cy="${c[1]}" rx="3" ry="3.5" transform="rotate(${a} ${c[0]} ${c[1]})"/>`;
+const cou=(t,e)=>L(t,e,3.2);
+const bras=(e,c,m,loin,sep)=>L(e,c,3.6,loin,sep)+L(c,m,3,loin,sep);
+const jambe=(h,g,p,loin,sep)=>L(h,g,5,loin,sep)+L(g,p,4,loin,sep);
+
+/* barre vue par la tranche : le disque, avec son moyeu et l'about de barre */
+const disque=(x,y,r=7)=>`<g><circle class="matf" cx="${x}" cy="${y}" r="${r}"/>
+  <circle cx="${x}" cy="${y}" r="${r*0.34}" style="fill:var(--surface)"/>
+  <rect class="matf" x="${x-1.1}" y="${y-r-2.6}" width="2.2" height="2.8" rx=".8"/>
+  <rect class="matf" x="${x-1.1}" y="${y+r-0.2}" width="2.2" height="2.8" rx=".8"/></g>`;
+/* barre vue de face : seulement pour les figures dessinées de face */
+const barreFace=(a,b)=>`<g><path class="mat" style="stroke-width:1.8" d="M${a[0]} ${a[1]} L${b[0]} ${b[1]}"/>
+ <rect class="matf" x="${a[0]-1.3}" y="${a[1]-4.5}" width="2.6" height="9" rx="1"/>
+ <rect class="matf" x="${b[0]-1.3}" y="${b[1]-4.5}" width="2.6" height="9" rx="1"/></g>`;
+const halt=(x,y)=>`<g class="matf"><rect x="${x-3.2}" y="${y-1}" width="6.4" height="2" rx=".8"/><rect x="${x-5}" y="${y-3}" width="2.4" height="6" rx="1"/><rect x="${x+2.6}" y="${y-3}" width="2.4" height="6" rx="1"/></g>`;
+/* haltère vu par la tranche (bras tendu vers l'observateur) */
+const haltTranche=(x,y)=>`<g><circle class="matf" cx="${x}" cy="${y}" r="4.4"/><circle cx="${x}" cy="${y}" r="1.5" style="fill:var(--surface)"/></g>`;
+const banc=(x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,Lg=Math.hypot(dx,dy)||1,nx=-dy/Lg*1.4,ny=dx/Lg*1.4;
+  return `<g class="banc"><path d="M${x1+nx} ${y1+ny} L${x2+nx} ${y2+ny} L${x2-nx} ${y2-ny} L${x1-nx} ${y1-ny} Z"/>
+   <rect x="${x1+4}" y="${y1}" width="2.2" height="${72-y1}" rx=".8"/><rect x="${x2-6}" y="${y2}" width="2.2" height="${72-y2}" rx=".8"/></g>`;};
+const marche=(x,y,w=32)=>`<g class="banc"><rect x="${x}" y="${y}" width="${w}" height="${72-y}" rx="1"/></g>`;
+const bande=(a,b)=>`<path class="band" d="M${a[0]} ${a[1]} Q ${(a[0]+b[0])/2} ${(a[1]+b[1])/2-8} ${b[0]} ${b[1]}"/>`;
+const axe=(a,b,c,d,t,tx,ty)=>`<path class="axe" d="M${a} ${b} L${c} ${d}"/><text class="axeT" x="${tx}" y="${ty}">${t}</text>`;
+const roue=(x,y)=>`<g><circle class="matf" cx="${x}" cy="${y}" r="6"/><circle cx="${x}" cy="${y}" r="2" style="fill:var(--surface)"/></g>`;
 
 const FIG={
-"Développé couché":{alt:"Allongé sur le banc plat, omoplates serrées, barre au-dessus des pectoraux",
-  g:()=>banc(24,50,100,50)+barre([62,30],[92,30]),
-  c:{t:[88,44],e:[79,47],h:[50,50],c:[77,38],m:[76,30],g:[41,60],p:[39,72]}},
-"Développé incliné haltères":{alt:"Banc à 30-40°, coudes à 45° du buste, haltères au-dessus des épaules",
-  g:()=>banc(34,62,90,36)+halt(76,24)+halt(68,28),
-  c:{t:[85,34],e:[77,40],h:[48,57],c:[77,32],m:[76,25],g:[38,64],p:[34,72]}},
-"Pompes sur poignées":{alt:"Corps gainé en planche, mains sur les poignées, descente sous le niveau du sol",
-  g:()=>`<g class="mat"><rect x="24" y="60" width="8" height="7" rx="1.5"/></g>`,
-  c:{t:[24,44],e:[33,50],h:[66,58],c:[28,55],m:[28,60],g:[84,64],p:[100,70]}},
-"Élévations latérales":{alt:"Debout, léger penché avant, bras montés jusqu'à l'horizontale",
-  g:()=>halt(34,40)+halt(88,40),
-  c:{t:[60,22],e:[61,32],h:[61,50],c:[48,36],m:[37,40],c2:[74,36],m2:[85,40],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
-"Dips sur banc":{alt:"Mains au bord du banc, doigts vers l'avant, coude à 90°",
-  g:()=>banc(18,50,54,50),
-  c:{t:[47,33],e:[45,41],h:[58,54],c:[40,47],m:[38,50],g:[80,58],p:[98,70]}},
-"Extension triceps élastique":{alt:"Élastique accroché en hauteur, coudes fixes et serrés, seuls les avant-bras bougent",
-  g:()=>bande([92,10],[73,26]),
-  c:{t:[58,24],e:[59,34],h:[60,50],c:[64,18],m:[73,26],g:[57,61],p:[56,72],g2:[64,61],p2:[65,72]}},
-"Roue abdominale":{alt:"À genoux, bassin rétroversé, dos plat, roue loin devant",
-  g:()=>`<g class="mat"><circle cx="28" cy="65" r="6.5"/><line x1="20" y1="65" x2="36" y2="65"/></g>`,
-  c:{t:[54,43],e:[60,48],h:[84,58],c:[46,55],m:[34,63],g:[88,70],p:[101,70]}},
-"Rowing barre buste penché":{alt:"Buste à 45°, dos plat, barre tirée vers le nombril",
-  g:()=>barre([44,50],[76,50]),
-  c:{t:[42,29],e:[50,35],h:[74,47],c:[54,45],m:[58,50],g:[76,59],p:[74,72],g2:[70,59],p2:[68,72]}},
-"Rowing unilatéral haltère":{alt:"Main et genou opposés en appui sur le banc, haltère qui pend sous l'épaule",
-  g:()=>banc(30,50,90,50)+halt(45,61),
-  c:{t:[48,31],e:[56,36],h:[86,42],c:[50,47],m:[45,59],c2:[57,43],m2:[58,50],g:[94,58],p:[92,72],g2:[80,50],p2:[70,50]}},
-"Pullover haltère":{alt:"Allongé sur le banc plat, haltère descendu derrière la tête, bras quasi tendus",
-  g:()=>banc(28,50,98,50)+halt(101,30),
-  c:{t:[88,44],e:[80,47],h:[52,50],c:[90,38],m:[99,31],g:[43,60],p:[41,72]}},
-"Tirage visage élastique":{alt:"Élastique à hauteur du visage, tiré vers le front, coudes hauts et écartés",
-  g:()=>bande([12,32],[44,31]),
-  c:{t:[68,24],e:[67,34],h:[66,50],c:[54,27],m:[45,31],g:[63,61],p:[62,72],g2:[70,61],p2:[71,72]}},
-"Curl biceps haltères":{alt:"Coudes collés au buste, pas d'élan de hanches, descente contrôlée",
-  g:()=>halt(50,37)+halt(72,37),
-  c:{t:[61,22],e:[61,32],h:[61,50],c:[57,44],m:[52,38],c2:[66,44],m2:[71,38],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
-"Gainage planche":{alt:"Appui sur les avant-bras, corps aligné des talons à la nuque",
-  c:{t:[24,50],e:[33,54],h:[68,60],c:[26,62],m:[38,62],g:[88,66],p:[102,70]}},
-"Gainage latéral":{alt:"Appui sur un coude, hanche haute, corps dans un seul plan",
-  c:{t:[26,44],e:[34,50],h:[70,62],c:[30,62],m:[41,62],g:[92,68],p:[104,70]}},
-"Soulevé de terre roumain":{alt:"Barre collée aux cuisses, bassin en arrière, genoux quasi tendus, dos plat",
-  g:()=>barre([38,54],[70,54]),
-  c:{t:[42,28],e:[50,34],h:[74,44],c:[52,44],m:[54,54],g:[76,58],p:[74,72],g2:[70,58],p2:[68,72]}},
-"Fente bulgare":{alt:"Pied arrière sur le banc, descente verticale, genou avant au-dessus du pied",
-  g:()=>banc(84,54,116,54)+halt(43,50)+halt(66,50),
-  c:{t:[54,20],e:[54,29],h:[55,45],c:[48,38],m:[44,48],c2:[62,38],m2:[65,48],g:[52,60],p:[52,72],g2:[73,62],p2:[89,54]}},
-"Hip thrust":{alt:"Haut du dos sur le banc, barre sur le pli des hanches, bassin jusqu'à l'alignement",
-  g:()=>banc(12,44,50,44)+barre([60,41],[78,41]),
-  c:{t:[26,37],e:[35,41],h:[68,45],c:[34,48],m:[30,44],g:[88,57],p:[88,72],g2:[78,58],p2:[78,72]}},
-"Développé militaire debout":{alt:"Barre au-dessus de la tête, fesses et abdos serrés, pas de cambrure",
-  g:()=>barre([44,16],[78,16]),
-  c:{t:[61,27],e:[61,35],h:[61,51],c:[52,27],m:[52,17],c2:[70,27],m2:[70,17],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
-"Mollets debout":{alt:"Avant-pieds sur une marche, talon très bas puis très haut",
-  g:()=>`<g class="banc"><rect x="46" y="64" width="32" height="8" rx="1"/></g>`+halt(44,44)+halt(78,44),
-  c:{t:[61,22],e:[61,32],h:[61,48],c:[52,38],m:[46,44],c2:[70,38],m2:[76,44],g:[59,56],p:[60,64],g2:[64,56],p2:[65,64]}},
-"Échauffement":{alt:"Cercles de bras et mise en route, à vide, avant de charger",
-  c:{t:[61,24],e:[61,34],h:[61,50],c:[52,27],m:[48,18],c2:[70,41],m2:[74,50],g:[58,61],p:[57,72],g2:[65,61],p2:[66,72]}},
-"Étirements":{alt:"Étirement tenu une trentaine de secondes par côté, respiration libre",
-  c:{t:[56,22],e:[57,32],h:[58,49],c:[66,40],m:[73,49],g:[56,61],p:[55,72],g2:[65,60],p2:[74,50]}}
+"Échauffement":{v:"profil", d:
+  /* cercles de bras : un bras haut, un bras bas, l'arc du geste entre les deux */
+  `<path class="axe" d="M46 16 A 13 13 0 0 0 46 42"/>`+
+  jambe([54,45],[51,58],[51,71],true)+tronc([54,27],[54,45])+
+  bras([54,27],[59,36],[60,45],true)+cou([54,22],[54,27])+tete([54,18])+
+  jambe([54,45],[57,58],[57,71])+bras([54,27],[50,19],[48,11],false,true)},
+
+"Développé couché":{v:"profil", d:
+  banc(22,50,102,50)+
+  jambe([50,50],[42,60],[40,71],true)+jambe([50,50],[45,61],[43,71])+
+  bras([81,46],[76,38],[76,31],true)+tronc([81,47],[50,50])+
+  cou([88,45],[81,47])+tete([91,44],-14)+bras([81,46],[79,38],[77,31],false,true)+
+  disque(77,29)},
+
+"Développé incliné haltères":{v:"profil", d:
+  banc(30,62,92,36)+
+  jambe([48,56],[40,64],[36,71],true)+jambe([48,56],[43,65],[39,71])+
+  bras([77,40],[76,33],[75,27],true)+tronc([77,41],[48,56])+
+  cou([83,37],[77,41])+tete([86,35],-28)+bras([77,40],[78,33],[77,27],false,true)+
+  haltTranche(76,25)},
+
+"Pompes sur poignées":{v:"profil", d:
+  `<g class="banc"><rect x="24" y="60" width="7" height="7" rx="1.2"/></g>`+
+  jambe([66,58],[84,64],[100,70],true)+
+  tronc([34,50],[66,58])+bras([34,50],[30,55],[29,60],true)+
+  cou([28,47],[34,50])+tete([25,46],72)+bras([34,50],[31,55],[30,60],false,true)+
+  jambe([66,58],[86,65],[102,70])},
+
+"Élévations latérales":{v:"face", d:
+  /* de face : de profil, les bras tendus sur les côtés pointeraient vers
+     l'observateur et le geste serait invisible */
+  jambe([60,46],[56,58],[55,71])+jambe([60,46],[64,58],[65,71])+
+  tronc([60,28],[60,46],13,10)+
+  bras([54,29],[42,32],[32,36])+bras([66,29],[78,32],[88,36])+
+  cou([60,23],[60,28])+tete([60,19])+
+  halt(30,36)+halt(90,36)},
+
+"Dips sur banc":{v:"profil", d:
+  banc(16,50,54,50)+
+  jambe([58,54],[78,58],[98,69],true)+
+  bras([45,42],[40,47],[39,50],true)+tronc([45,42],[58,54])+
+  cou([46,37],[45,42])+tete([46,33],10)+bras([45,42],[41,47],[40,50],false,true)+
+  jambe([58,54],[80,59],[100,70])},
+
+"Extension triceps élastique":{v:"profil", d:
+  /* coudes hauts et fixes près de la tête, seuls les avant-bras montent */
+  bande([84,8],[70,30])+
+  jambe([57,45],[54,58],[54,71],true)+tronc([58,27],[57,45])+
+  bras([58,27],[60,15],[68,22],true)+cou([58,22],[58,27])+tete([55,19],6)+
+  jambe([57,45],[60,58],[60,71])+bras([58,27],[61,15],[69,23],false,true)+
+  axe(61,15,69,23,"coudes fixes",30,16)},
+
+"Roue abdominale":{v:"profil", d:
+  roue(28,65)+
+  jambe([84,56],[88,68],[100,70],true)+
+  tronc([58,46],[84,56])+bras([58,46],[46,54],[34,62],true)+
+  cou([53,43],[58,46])+tete([50,42],20)+bras([58,46],[47,55],[35,63],false,true)},
+
+"Étirements":{v:"profil", d:
+  jambe([58,46],[62,58],[70,50],true)+
+  tronc([57,28],[58,46])+bras([57,28],[64,36],[69,47],true)+
+  jambe([58,46],[55,58],[55,71])+
+  cou([57,23],[57,28])+tete([57,19])+bras([57,28],[65,37],[70,48],false,true)},
+
+"Rowing barre buste penché":{v:"profil", d:
+  jambe([74,45],[77,58],[75,71],true)+jambe([74,45],[75,58],[73,71])+
+  tronc([50,32],[74,45])+bras([50,32],[54,41],[58,48],true)+
+  cou([45,28],[50,32])+tete([42,25],26)+bras([50,32],[55,41],[59,48],false,true)+
+  disque(60,49)+axe(48,32,74,45,"45°",64,34)+`<path class="axe" d="M74 45 L74 30"/>`},
+
+"Rowing unilatéral haltère":{v:"profil", d:
+  banc(30,50,88,50)+
+  jambe([84,44],[90,58],[88,71],true)+jambe([84,44],[78,50],[68,50])+
+  tronc([56,36],[84,44])+bras([56,36],[57,43],[58,50],true)+
+  cou([51,33],[56,36])+tete([48,31],24)+bras([56,36],[50,46],[46,57],false,true)+
+  haltTranche(45,60)},
+
+"Pullover haltère":{v:"profil", d:
+  banc(22,50,102,50)+
+  jambe([50,50],[42,60],[40,71],true)+jambe([50,50],[45,61],[43,71])+
+  bras([81,46],[88,39],[96,33],true)+tronc([81,47],[50,50])+
+  cou([87,46],[81,47])+tete([90,47],-8)+bras([81,46],[89,39],[97,33],false,true)+
+  haltTranche(99,31)},
+
+"Tirage visage élastique":{v:"profil", d:
+  bande([12,30],[44,30])+
+  jambe([62,45],[59,58],[59,71],true)+tronc([63,28],[62,45])+
+  bras([63,28],[53,25],[45,30],true)+cou([64,23],[63,28])+tete([65,19],6)+
+  jambe([62,45],[65,58],[65,71])+bras([63,28],[54,24],[46,29],false,true)},
+
+"Curl biceps haltères":{v:"profil", d:
+  jambe([58,46],[55,58],[55,71],true)+jambe([58,46],[61,58],[61,71])+
+  tronc([58,28],[58,46])+bras([58,28],[57,38],[63,33],true)+
+  cou([58,23],[58,28])+tete([58,19])+bras([58,28],[58,38],[64,33],false,true)+
+  haltTranche(66,32)},
+
+"Gainage planche":{v:"profil", d:
+  jambe([68,58],[86,64],[102,70],true)+
+  tronc([34,50],[68,58])+bras([34,50],[28,57],[40,60],true)+
+  cou([28,48],[34,50])+tete([24,47],72)+bras([34,50],[29,58],[41,61],false,true)+
+  jambe([68,58],[88,65],[104,70])},
+
+"Soulevé de terre roumain":{v:"profil", d:
+  jambe([75,44],[78,58],[76,71],true)+jambe([75,44],[76,58],[74,71])+
+  tronc([50,33],[75,44])+bras([50,33],[52,43],[54,52],true)+
+  cou([45,29],[50,33])+tete([42,26],28)+bras([50,33],[53,43],[55,52],false,true)+
+  disque(56,55)+axe(47,30,77,43,"45°",66,32)+`<path class="axe" d="M77 43 L77 27"/>`},
+
+"Fente bulgare":{v:"profil", d:
+  banc(82,53,114,53)+
+  jambe([54,45],[72,60],[86,53],true)+tronc([54,27],[54,45])+
+  bras([54,27],[48,36],[45,46],true)+jambe([54,45],[51,58],[51,71])+
+  cou([54,22],[54,27])+tete([54,18])+bras([54,27],[61,36],[64,46],false,true)+
+  halt(44,48)+halt(64,48)+axe(51,58,51,71,"90°",36,62)+`<path class="axe" d="M51 58 L56 47"/>`},
+
+"Hip thrust":{v:"profil", d:
+  banc(10,42,48,42)+
+  jambe([70,44],[86,56],[86,71],true)+
+  tronc([36,40],[70,44])+bras([36,40],[32,46],[30,42],true)+
+  cou([31,38],[36,40])+tete([27,37],78)+bras([36,40],[33,46],[31,42],false,true)+
+  jambe([70,44],[88,57],[88,71])+disque(70,41)},
+
+"Développé militaire debout":{v:"profil", d:
+  jambe([58,46],[55,58],[55,71],true)+jambe([58,46],[61,58],[61,71])+
+  tronc([58,28],[58,46])+bras([58,28],[60,21],[60,14],true)+
+  cou([58,23],[58,28])+tete([58,19])+bras([58,28],[61,21],[61,14],false,true)+
+  disque(61,12,6)},
+
+
+"Mollets debout":{v:"profil", d:
+  marche(44,64,34)+
+  jambe([58,44],[55,54],[56,64],true)+jambe([58,44],[61,54],[62,64])+
+  tronc([58,26],[58,44])+bras([58,26],[52,34],[49,43],true)+
+  cou([58,21],[58,26])+tete([58,17])+bras([58,26],[64,34],[67,43],false,true)+
+  halt(48,45)+halt(68,45)},
+
+"Gainage latéral":{v:"profil", d:
+  jambe([70,60],[88,66],[104,70],true)+
+  tronc([34,48],[70,60])+
+  cou([29,45],[34,48])+tete([26,44],60)+bras([34,48],[30,58],[42,60],false,true)},
+
 };
 
 /* Recherche vidéo plutôt qu'une vidéo précise : une adresse de vidéo finit par
@@ -448,9 +564,9 @@ const videoDe=n=>"https://www.youtube.com/results?search_query="+encodeURICompon
 
 function figureDe(nom){
   const f=FIG[nom]; if(!f) return "";
-  return `<svg class="fig" viewBox="0 0 120 80" role="img" aria-label="${esc(f.alt)}">
-    <line class="sol" x1="4" y1="72" x2="116" y2="72"/>
-    ${f.g?f.g():""}${corps(f.c)}</svg>`;
+  const vue=f.v==="face"?"vu de face":"vu de profil";
+  return `<svg class="fig" viewBox="0 0 120 80" role="img" aria-label="${esc(nom+", "+vue)}">
+    <line class="sol" x1="6" y1="72" x2="114" y2="72"/>${f.d}</svg>`;
 }
 
 /* =========================================================
@@ -869,6 +985,7 @@ const Timer={
     this.total=sec; this.left=sec; this.end=Date.now()+sec*1000;
     this.running=true; this.done=onDone; this.fired=false;
     el("t-label").textContent=label;
+    peindreEnsuite();
     sheet.classList.remove("hidden","alarm");
     el("t-toggle").textContent="Pause";
     el("t-skip").textContent = label==="Récupération" ? "Passer la récup" : "Terminer";
@@ -979,6 +1096,23 @@ function validateSet(){
 function advance(){
   const e=curEx();
   if(S.set>=e.sets){ S.i++; S.set=1; } else S.set++;
+}
+
+/* La feuille recouvre le pied de séance : sans cette ligne, on regarde un
+   décompte sans savoir s'il faut recharger la barre ou sortir les haltères. */
+function peindreEnsuite(){
+  const n=el("t-next"); if(!n) return;
+  const e=S&&S.p.ex[S.i];
+  if(!e){ n.className="ensuite vide"; return; }
+  n.className="ensuite";
+  /* au milieu d'un exercice, ce qui vient est une série de plus : répéter le nom
+     n'apprendrait rien. C'est au changement d'exercice que l'information compte,
+     parce qu'il faut recharger la barre ou sortir les haltères. */
+  const suite = S.set>1
+    ? {titre:`Série ${S.set} sur ${e.sets}`, detail:`${e.n} · ${paramsOf(S.p.id,e)}`}
+    : {titre:e.n, detail:paramsOf(S.p.id,e)};
+  n.innerHTML=`<div class="el">Ensuite</div><div class="en">${esc(suite.titre)}</div>
+               <div class="ep">${esc(suite.detail)}</div>`;
 }
 
 function startWork(){
@@ -1114,6 +1248,14 @@ function renderHome(){
   </div>`;
 }
 
+/* Le pas dépend de l'inventaire : sans l'afficher, on ignore avant d'appuyer si
+   la charge montera de 2,5 ou de 5 kg. */
+function pasDe(e,w){
+  const list=e.load==="bar"?BAR:DB, i=nearest(list,w);
+  const h=list[i+1]!=null?Math.round((list[i+1]-list[i])*10)/10:null;
+  return h!=null?`pas de ${fmt(h)} kg`:"maximum de l'inventaire";
+}
+
 function renderSession(){
   const p=S.p, e=curEx(), i=S.i;
   const isTime=e.type==="time";
@@ -1128,10 +1270,12 @@ function renderSession(){
       <div class="dial">
         <div class="dl">Charge</div><div class="dv">${fmt(w)} kg</div><div class="dh">${hint}</div>
         <div class="pm"><button data-w="-1">−</button><button data-w="1">+</button></div>
+        <div class="dh" style="margin-top:6px">${pasDe(e,w)}</div>
       </div>
       <div class="dial">
         <div class="dl">Répétitions${e.side?" par côté":""}</div><div class="dv">${S.reps[i]}</div><div class="dh">objectif ${getR(p.id,e)}</div>
         <div class="pm"><button data-r="-1">−</button><button data-r="1">+</button></div>
+        <div class="dh" style="margin-top:6px">pas de 1</div>
       </div>
     </div>`;
   } else if(e.type==="reps"){
@@ -1162,9 +1306,9 @@ function renderSession(){
           return `<button class="solid blue" id="go">Démarrer · ${Math.floor(d/60)>0?Math.floor(d/60)+" min":""}${d%60?(Math.floor(d/60)?" ":"")+(d%60)+" s":""}</button>`; })()
       : `<button class="solid" id="go">Série validée</button>`}
     <div class="under">
-      <button id="prev" ${i===0&&S.set===1?"style='visibility:hidden'":""}>Revenir en arrière</button>
+      <button id="prev" ${i===0&&S.set===1?"style='visibility:hidden'":""}>Revenir</button>
       <button id="hard">Trop facile</button>
-      <button id="skip">Passer l'exercice</button>
+      <button id="skip">Passer</button>
     </div>
   </div>`;
 }
@@ -1177,10 +1321,14 @@ function renderSession(){
    échelle, et l'axe du temps est partagé. Un seul tracé par cadre : le titre
    suffit à l'identifier, pas besoin de légende.
    ========================================================= */
+/* Teintes revalidées sur le fond sombre : la palette d'origine, réglée pour le
+   fond clair, y tombait à 2,4:1 de contraste. Celle-ci passe les six contrôles
+   — bande de clarté, chroma, séparation daltonismes (ΔE 8,3 au pire), contraste
+   — sur la surface #171A1F. Ne pas la changer sans revalider. */
 const SERIES=[
-  {k:"kg",     nom:"Poids",            court:"Poids",   u:"kg", c:"#0F4FD8"},
-  {k:"muscle", nom:"Masse musculaire", court:"Muscle",  u:"kg", c:"#BF6A00"},
-  {k:"fat",    nom:"Masse grasse",     court:"Graisse", u:"kg", c:"#8A2F86"}
+  {k:"kg",     nom:"Poids",            court:"Poids",   u:"kg", c:"#4A90E2"},
+  {k:"muscle", nom:"Masse musculaire", court:"Muscle",  u:"kg", c:"#BE7F28"},
+  {k:"fat",    nom:"Masse grasse",     court:"Graisse", u:"kg", c:"#B75FAF"}
 ];
 const kilo=v=>fmt(Number(v).toFixed(1));
 const tonnes=v=>fmt((v/1000).toFixed(1))+" t";
@@ -1332,7 +1480,7 @@ function courbes(mes,seances){
       const h=Math.max(1.5,(w.vol/volMax)*(lo-hi));
       const x=X(w.t), l=Math.min(larg,CH.x1-x);          // aucune barre ne dépasse du cadre
       if(l<0.5) return;
-      out+=`<rect x="${x.toFixed(1)}" y="${(lo-h).toFixed(1)}" width="${l.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="var(--ink)" opacity=".72"/>`;
+      out+=`<rect x="${x.toFixed(1)}" y="${(lo-h).toFixed(1)}" width="${l.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="var(--ink)" opacity=".55"/>`;
     });
     const total=sc.reduce((a,h)=>a+(h.vol||0),0);
     out+=`<text class="val" x="${CH.x1}" y="${top+13}">${tonnes(total)}</text>`;
@@ -1450,7 +1598,7 @@ function renderGear(){
     <div class="gline" style="display:block">
       <button class="add" id="s-token" style="width:100%">Afficher le jeton</button>
       <div id="s-token-out" style="display:none;margin-top:10px;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
-           word-break:break-all;background:rgba(21,23,27,.045);padding:12px;border-radius:10px"></div>
+           word-break:break-all;background:var(--surface);padding:12px;border-radius:10px"></div>
     </div>
   </div>
   <div class="foot"><button class="solid" id="g-save">Enregistrer le matériel</button></div>`;
@@ -1494,7 +1642,7 @@ function renderDone(d){
       return `<div class="empty" style="padding-top:18px">Sur les ${t.j} derniers jours : ${bouts.join(", ")}.</div>`;
     })()}
     <div class="empty" style="border:0;padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
-    <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1">C'était trop facile</button></div>
+    <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1;background:transparent;border:1.5px solid var(--ink);color:var(--ink)">Monter d'un cran</button></div>
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;

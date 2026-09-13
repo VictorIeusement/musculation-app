@@ -23,10 +23,18 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    (`n`, `type` reps ou time, `sets`, `reps`/`dur`, `rest`, `load`, `def`, `side`, `cues`).
    `estimate()` calcule la durée d'une séance : elle doit rester sous 45 minutes.
 1 bis. FIGURES — `FIG` : une illustration par exercice, dessinée en SVG dans la
-   page. Le pantin tient dans un repère 120×80, sol à y=72 ; un exercice n'est
-   qu'un jeu de coordonnées (tête, épaule, hanche, articulations), le membre le
-   plus éloigné en clair. `figureDe()` rend le SVG, `videoDe()` fabrique le lien
-   de recherche vidéo. Ces schémas donnent la position, pas le détail du geste.
+   page, repère 120×80, sol à y=72. Pictogramme réglé sur environ huit têtes,
+   épaisseurs hiérarchisées (cuisse 5, mollet 4, bras 3,6, avant-bras 3) et
+   tronc plein : des membres d'égale largeur et une tête ronde surdimensionnée
+   ne donnent qu'un pantin enfantin. Le membre passant devant le corps est
+   d'abord tracé à la couleur de la surface, plus large — sans ce liseré il se
+   fond dans le tronc sur les mouvements penchés.
+   **Vue de profil, sauf mention `v:"face"`.** Conséquence à ne pas oublier :
+   une barre dont l'axe traverse les épaules s'y voit PAR LA TRANCHE, donc en
+   disque (`disque()`), jamais en trait horizontal (`barreFace()`, réservé aux
+   figures dessinées de face) — sinon on ne sait plus si la barre est parallèle
+   aux épaules ou dans l'axe du corps. `figureDe()` rend le SVG et annonce la
+   vue aux lecteurs d'écran, `videoDe()` fabrique le lien de recherche vidéo.
 2. DONNÉES — `localStorage` (clé `workout:data`), export/import JSON, et
    sauvegarde chiffrée : `localSave()` écrit en local, `save()` ajoute
    l'horodatage et déclenche `syncNow()`, `merge()` réunit deux états sans rien
@@ -73,8 +81,9 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    qu'un axe commun — poids, masse musculaire et masse grasse n'ont pas le même
    ordre de grandeur, et un axe partagé écraserait les variations de poids. Un
    tracé par cadre, donc pas de légende : le titre nomme la série. Les trois
-   teintes de `SERIES` sont validées pour les daltonismes ; ne pas les changer
-   sans revalider. Le tableau sous les courbes est la version lisible sans
+   teintes de `SERIES` sont validées pour les daltonismes ET pour le
+   contraste sur la surface sombre — la palette d'origine, réglée pour un fond
+   clair, y tombait à 2,4:1. Ne pas les changer sans revalider les six contrôles. Le tableau sous les courbes est la version lisible sans
    couleur, et il ne doit pas disparaître. Le quatrième cadre porte le volume
    d'entraînement sur le même axe de temps : c'est là que se lit le lien avec
    les courbes, et c'est volontairement une mise en regard, pas un coefficient —
@@ -85,6 +94,17 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    `DATA.nextIdx`, sauf si la semaine en cours est vide, auquel cas on repart de
    A. `paramsOf()` rend les paramètres réels d'un exercice (séries, répétitions,
    charge ou durée, récup), niveau de difficulté compris.
+
+## Habillage
+Direction « cockpit » : fond sombre, chiffres lumineux, un seul accent
+(`--signal`) pour ce qui est actif ou primaire. Tout passe par les variables de
+`:root` — `--concrete` le fond, `--surface` les cartes et feuilles, `--ink` le
+texte, `--steel` le secondaire, `--hot` l'alerte. Ne jamais écrire une couleur
+en dur dans un composant : c'est ce qui avait laissé des rgba() clairs traîner
+au changement de direction.
+La police reste la pile système : la direction prévoyait Space Grotesk, mais une
+police Google est une dépendance réseau, et le fichier doit fonctionner hors
+ligne.
 
 ## Contraintes à respecter
 - Charges de barre : uniquement les combinaisons symétriques calculées par
@@ -101,6 +121,9 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
 - `estimate()` doit rester sous 45 minutes à tous les niveaux de difficulté :
   c'est `raiseLevel()` qui en répond, et c'est ce qui justifie les plafonds
   `MAX_REPS`, `MAX_DUR` et le plancher de récupération.
+- Tout couple texte/fond doit tenir 4,5:1 (3:1 pour le gros texte), et toute
+  commande tactile 44 px de haut — par du remplissage, pas en grossissant la
+  typographie. Le test du navigateur parcourt chaque écran et le vérifie.
 - Ne jamais envoyer l'état en clair au serveur, ni écrire la phrase ailleurs que
   dans le `localStorage` de l'appareil.
 - Jamais de second axe vertical sur un même graphique : deux échelles côte à
