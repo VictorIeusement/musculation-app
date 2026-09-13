@@ -1,7 +1,8 @@
 # Salle à la maison
 
 Application de suivi de séances de musculation à domicile : programme en 3 séances,
-guidage exercice par exercice, minuteur avec alerte sonore, historique.
+guidage exercice par exercice, minuteur avec alerte sonore, historique, et un
+niveau de difficulté qui monte quand la séance devient trop facile.
 
 Site statique, aucune dépendance, aucun build. Tout tient dans `index.html`.
 
@@ -20,24 +21,57 @@ Chaque `git push` redéploie en une minute environ.
 Après modification, penser à `git push` : le service worker sert le réseau en
 priorité, donc la nouvelle version arrive dès que le téléphone est connecté.
 
+## Niveau de difficulté
+
+Chaque séance (A, B, C) porte son propre niveau, conservé d'une fois sur l'autre
+et inscrit dans l'historique. Le bouton « Trop facile », en bas de l'écran de
+séance ou sur le résumé de fin, monte d'un cran.
+
+Un cran suit une progression double, dans cet ordre :
+
+1. une répétition de plus ;
+2. puis le cran de charge suivant, avec retour aux répétitions de départ —
+   uniquement une charge que la barre sait composer ;
+3. puis, quand l'inventaire est au maximum, cinq secondes de récupération en
+   moins, jusqu'à 60 % du repos prévu.
+
+La montée reste sous la barre des 45 minutes : si un cran fait déborder, il est
+payé en récupération, et s'il ne rentre toujours pas il est refusé plutôt que
+d'allonger la séance. Quand le matériel est saturé, l'app le dit au lieu de
+faire monter un compteur qui ne change rien.
+
 ## Données
 
 Les séances vivent dans le `localStorage` du navigateur, clé `workout:data`.
 Rien n'est commité dans le dépôt.
 
-## Synchronisation entre appareils (optionnelle)
+Pour effacer une séance : la balayer vers la gauche dans l'historique, puis
+« Supprimer ». La date supprimée est retenue, sinon la copie de l'autre appareil
+la ferait revenir à la synchronisation suivante.
 
-Le dossier `sync/` contient un Worker Cloudflare qui sert de dépôt central.
+## Sauvegarde en ligne et synchronisation (optionnelles)
+
+Le dossier `sync/` contient un Worker Cloudflare qui sert de dépôt central. Sur
+un seul appareil il tient lieu de sauvegarde ; sur deux, de synchronisation.
 
 ```bash
 cd sync
 npx wrangler kv namespace create seances   # reporter l'id dans wrangler.toml
-npx wrangler secret put SYNC_KEY           # une phrase longue, inventée
+npx wrangler secret put SYNC_KEY           # le jeton, pas la phrase : voir plus bas
 npx wrangler deploy
 ```
 
-Renseigner ensuite l'adresse du Worker et la clé dans l'écran « Matériel »,
-sur chaque appareil. La clé reste dans le navigateur, elle n'est jamais commitée.
+L'état est chiffré dans le navigateur avant d'être envoyé : le serveur ne stocke
+que des octets illisibles et ne détient rien qui permette de les relire. La
+phrase saisie dans « Matériel » ne sort jamais de l'appareil ; on en dérive, par
+deux sels différents, une clé AES-GCM qui reste locale et un jeton
+d'authentification qui, lui, part sur le réseau. C'est ce jeton — affiché par le
+bouton « Afficher le jeton » de l'écran « Matériel » — qu'il faut donner à
+`wrangler secret put SYNC_KEY`.
+
+Renseigner ensuite l'adresse du Worker et la phrase dans l'écran « Matériel », sur
+chaque appareil. Ni l'une ni l'autre n'est commitée. Perdre la phrase, c'est
+perdre la sauvegarde : personne, Cloudflare compris, ne peut la reconstituer.
 
 L'application fusionne au lieu d'écraser : les séances des deux appareils sont
 réunies par date, le reste (charges, matériel) vient du côté modifié en dernier.

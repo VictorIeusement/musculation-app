@@ -76,11 +76,16 @@ Demander à l'utilisateur s'il la veut maintenant. Si oui :
 3. Dans `wrangler.toml`, remplacer `ALLOWED_ORIGIN` par l'URL exacte trouvée à
    l'étape 3, sans barre oblique finale (exemple `https://vic.github.io`).
    Cette valeur doit être l'origine seule, pas l'URL complète du sous-dossier.
-4. `npx wrangler secret put SYNC_KEY` — **intervention humaine** : l'utilisateur
-   saisit une phrase longue de son choix. Ne jamais en inventer une à sa place,
-   ne jamais l'écrire dans un fichier du dépôt.
+4. `npx wrangler secret put SYNC_KEY` — **intervention humaine**. Attention :
+   ce n'est pas la phrase de l'utilisateur qui se pose ici, mais le jeton
+   qu'elle produit. L'utilisateur saisit d'abord sa phrase dans l'écran
+   « Matériel » de l'app, appuie sur « Afficher le jeton », et c'est ce jeton
+   qu'il colle dans wrangler. La phrase elle-même ne quitte jamais son
+   navigateur : elle sert aussi de clé de chiffrement, et le serveur ne doit
+   pas la connaître. Ne jamais en inventer une à sa place, ne jamais écrire
+   l'une ou l'autre dans un fichier du dépôt.
 5. `npx wrangler deploy` puis noter l'URL du Worker.
-6. Vérifier que le Worker refuse bien une requête sans clé :
+6. Vérifier que le Worker refuse bien une requête sans jeton :
    `curl -i <url-du-worker>` doit répondre 401.
 7. `cd .. && git commit -am "Configuration du Worker" && git push`
 
@@ -89,8 +94,10 @@ Demander à l'utilisateur s'il la veut maintenant. Si oui :
 Afficher à l'utilisateur :
 
 - l'URL du site, à ouvrir sur le téléphone puis « Ajouter à l'écran d'accueil » ;
-- l'URL du Worker, à saisir avec sa clé dans l'écran « Matériel », sur chaque appareil ;
-- le rappel que la clé n'est stockée que dans le navigateur, jamais dans le dépôt.
+- l'URL du Worker, à saisir avec sa phrase dans l'écran « Matériel », sur chaque appareil ;
+- le rappel que la phrase n'est stockée que dans le navigateur, jamais dans le dépôt,
+  et qu'elle est irrécupérable : la perdre, c'est perdre la sauvegarde, puisque
+  le serveur ne détient que des données chiffrées.
 
 ## À ne pas faire
 

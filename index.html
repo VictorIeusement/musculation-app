@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Séances">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
 <link rel="apple-touch-icon" href="icone-180.png">
 <style>html,body{margin:0;padding:0;background:#E7E8E3;min-height:100%}</style>
 </head>
@@ -69,7 +70,7 @@
   .hero .kicker{font-size:13px;color:var(--steel)}
   .hero h2{font-size:40px;line-height:1.02;font-weight:800;letter-spacing:-.035em;margin-top:6px}
   .hero .focus{font-size:15px;color:var(--ink-soft);margin-top:10px;max-width:34ch;line-height:1.45}
-  .meta{display:flex;gap:18px;margin-top:18px;font-size:13px;color:var(--steel)}
+  .meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:18px;font-size:13px;color:var(--steel)}
   .meta b{display:block;font-size:22px;color:var(--ink);font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 
   .cta{
@@ -96,11 +97,19 @@
   .row .rt span{display:block;font-size:13px;color:var(--steel);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .go{font-size:13px;color:var(--steel)}
 
-  .hist{border-top:1px solid var(--line);padding:14px 0;display:flex;gap:14px;align-items:baseline}
-  .hist .d{font-size:13px;color:var(--steel);width:78px;flex:none;font-variant-numeric:tabular-nums}
-  .hist .n{font-size:15px;font-weight:700;flex:1}
-  .hist .v{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums}
+  .hist{border-top:1px solid var(--line);padding:14px 0;display:flex;gap:10px;align-items:baseline}
+  .hist .d{font-size:13px;color:var(--steel);width:68px;flex:none;font-variant-numeric:tabular-nums}
+  .hist .n{font-size:15px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hist .v{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums;flex:none}
   .empty{padding:30px 0 10px;color:var(--steel);font-size:14px;line-height:1.5;border-top:1px solid var(--line)}
+
+  /* balayage vers la gauche sur une ligne d'historique */
+  .swipe{position:relative;overflow:hidden}
+  .swipe .hist{position:relative;z-index:1;background:var(--concrete);transition:transform .18s ease;touch-action:pan-y}
+  .swipe.open .hist{transform:translateX(-108px)}
+  .swipe-del{position:absolute;top:1px;right:0;bottom:0;width:108px;background:var(--hot);color:#fff;
+             font-size:14px;font-weight:700;letter-spacing:-.01em}
+  .hist .lvl{font-style:normal;font-size:12px;font-weight:600;color:var(--steel);flex:none}
 
   /* ---------- session ---------- */
   .prog{display:flex;gap:3px;padding:16px 20px 0}
@@ -138,7 +147,7 @@
   .solid{display:block;width:100%;padding:18px;border-radius:var(--r);background:var(--ink);color:var(--concrete);font-size:17px;font-weight:700;text-align:center}
   .solid.blue{background:var(--signal)}
   .solid:active{transform:translateY(1px)}
-  .under{display:flex;justify-content:space-between;margin-top:10px}
+  .under{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
   .under button{font-size:13px;color:var(--steel);padding:6px 2px;text-decoration:underline;text-underline-offset:3px}
 
   /* ---------- timer sheet ---------- */
@@ -284,12 +293,14 @@ const PROGRAM = [
   ]
 }];
 
-/* durée estimée : travail + récup, hors transitions */
+/* durée estimée : travail + récup courante, hors transitions.
+   Elle suit les objectifs courants, relevés par le niveau de difficulté,
+   et doit rester sous 45 minutes : c'est ce que vérifie raiseLevel(). */
 function estimate(p){
   let s=0;
   p.ex.forEach(e=>{
-    const work = e.type==="time" ? e.dur : e.reps*3.5*(e.side?2:1);
-    s += e.sets*(work+e.rest);
+    const work = e.type==="time" ? getD(p.id,e) : getR(p.id,e)*3.5*(e.side?2:1);
+    s += e.sets*(work+getRest(p.id,e));
   });
   return Math.round(s/60);
 }
@@ -298,7 +309,8 @@ function estimate(p){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-let DATA={history:[],weights:{},nextIdx:0,gear:null};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null};
+let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
 async function load(){
@@ -306,6 +318,7 @@ async function load(){
     const raw=localStorage.getItem(KEY);
     if(raw) DATA=Object.assign(DATA,JSON.parse(raw));
   }catch(e){/* première ouverture, ou stockage refusé par le navigateur */}
+  Object.keys(BLANK).forEach(k=>{ if(DATA[k]==null) DATA[k]=JSON.parse(JSON.stringify(BLANK[k])); });
   if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
   buildLoads();
 }
@@ -316,19 +329,64 @@ function localSave(){
 async function save(){ DATA.updated=Date.now(); localSave(); syncNow(true); }
 
 /* Fusion de deux états. Les séances sont réunies par date (jamais perdues),
-   le reste vient du côté modifié le plus récemment. */
+   sauf celles supprimées à la main : leur date reste inscrite dans `deleted`,
+   sinon la copie de l'autre appareil les ferait revenir. Le reste vient du
+   côté modifié le plus récemment. */
+function trimDeleted(d){
+  const out={};
+  Object.keys(d).sort((x,y)=>y-x).slice(0,200).forEach(k=>out[k]=d[k]);
+  return out;
+}
 function merge(a,b){
-  const seen={};
-  [].concat(b.history||[],a.history||[]).forEach(s=>{ if(s&&s.d&&!seen[s.d]) seen[s.d]=s; });
+  const seen={}, dead=Object.assign({},a.deleted||{},b.deleted||{});
+  [].concat(b.history||[],a.history||[]).forEach(s=>{ if(s&&s.d&&!seen[s.d]&&!dead[s.d]) seen[s.d]=s; });
   const newer=(a.updated||0)>=(b.updated||0)?a:b, older=newer===a?b:a;
+  const both=k=>Object.assign({},older[k]||{},newer[k]||{});
   return {
     history:Object.keys(seen).map(k=>seen[k]).sort((x,y)=>y.d-x.d).slice(0,120),
-    weights:Object.assign({},older.weights||{},newer.weights||{}),
+    weights:both("weights"), reps:both("reps"), dur:both("dur"), rest:both("rest"), level:both("level"),
+    deleted:trimDeleted(dead),
     gear:newer.gear||older.gear,
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
     sync:a.sync, syncedAt:a.syncedAt
   };
+}
+
+/* Chiffrement de bout en bout.
+   La phrase saisie dans « Matériel » ne quitte jamais l'appareil. On en dérive
+   deux valeurs distinctes, par deux sels différents :
+   - un jeton d'authentification, envoyé au serveur : c'est lui qu'il faut
+     donner à `wrangler secret put SYNC_KEY`, jamais la phrase ;
+   - une clé AES-GCM, qui ne sort pas du navigateur.
+   Le serveur ne stocke donc que des octets illisibles, et ne détient rien qui
+   permette de les relire. Perdre la phrase, c'est perdre la sauvegarde : il
+   n'existe aucun moyen de la récupérer, et c'est le prix du vrai chiffrement. */
+const ROUNDS=210000;
+let derived={phrase:null,keys:null};
+const utf8=t=>new TextEncoder().encode(t);
+function b64(buf){ let t=""; new Uint8Array(buf).forEach(c=>t+=String.fromCharCode(c)); return btoa(t); }
+function unb64(t){ const bin=atob(t), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+
+async function derive(phrase){
+  if(derived.phrase===phrase) return derived.keys;
+  const sub=window.crypto&&window.crypto.subtle;
+  if(!sub) throw new Error("chiffrement indisponible");
+  const base=await sub.importKey("raw",utf8(phrase),"PBKDF2",false,["deriveBits","deriveKey"]);
+  const rec=sel=>({name:"PBKDF2",salt:utf8(sel),iterations:ROUNDS,hash:"SHA-256"});
+  const token=b64(await sub.deriveBits(rec("seances-jeton-v1"),base,256));
+  const key=await sub.deriveKey(rec("seances-chiffre-v1"),base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  derived={phrase,keys:{token,key}};
+  return derived.keys;
+}
+async function seal(obj,key){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,utf8(JSON.stringify(obj)));
+  return {v:1,alg:"AES-GCM",iv:b64(iv),ct:b64(ct)};
+}
+async function unseal(env,key){
+  const clair=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(env.iv)},key,unb64(env.ct));
+  return JSON.parse(new TextDecoder().decode(clair));
 }
 
 let syncing=false;
@@ -337,17 +395,30 @@ async function syncNow(silent){
   if(!s||!s.url||!s.key||syncing) return false;
   syncing=true;
   try{
-    const head={authorization:"Bearer "+s.key};
+    let k;
+    try{ k=await derive(s.key); }
+    catch(e){ if(!silent) toast("Chiffrement indisponible sur ce navigateur"); return false; }
+    const head={authorization:"Bearer "+k.token};
     const r=await fetch(s.url,{headers:head,cache:"no-store"});
-    if(r.status===401){ if(!silent) toast("Clé refusée par le serveur"); return false; }
+    if(r.status===401){ if(!silent) toast("Phrase refusée par le serveur"); return false; }
     if(!r.ok) throw new Error("get");
-    const remote=await r.json();
+    const body=await r.json();
+    let remote=null;
+    if(body&&body.ct){
+      try{ remote=await unseal(body,k.key); }
+      catch(e){
+        /* mauvaise phrase : on s'arrête avant d'écrire, sinon on écrase une
+           sauvegarde encore bonne avec l'état de cet appareil. */
+        if(!silent) toast("Sauvegarde illisible : ce n'est pas la bonne phrase");
+        return false;
+      }
+    } else if(body&&body.history) remote=body; // sauvegarde d'avant le chiffrement
     if(remote&&remote.history) DATA=merge(DATA,remote);
     const payload=Object.assign({},DATA); delete payload.sync; delete payload.syncedAt;
-    const p=await fetch(s.url,{method:"PUT",headers:Object.assign({"content-type":"application/json"},head),body:JSON.stringify(payload)});
+    const p=await fetch(s.url,{method:"PUT",headers:Object.assign({"content-type":"application/json"},head),body:JSON.stringify(await seal(payload,k.key))});
     if(!p.ok) throw new Error("put");
     DATA.syncedAt=Date.now(); localSave();
-    if(!silent) toast("Synchronisé");
+    if(!silent) toast("Sauvegardé, chiffré");
     return true;
   }catch(e){
     if(!silent) toast("Serveur injoignable : les séances restent sur cet appareil");
@@ -367,7 +438,7 @@ function importData(file){
     try{
       const d=JSON.parse(r.result);
       if(!d.history) throw 0;
-      DATA=Object.assign({history:[],weights:{},nextIdx:0,gear:null},d);
+      DATA=Object.assign(JSON.parse(JSON.stringify(BLANK)),d);
       if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
       buildLoads(); save(); render(); toast("Données importées");
     }catch(e){ toast("Fichier illisible : choisis un export de cette app"); }
@@ -377,9 +448,120 @@ function importData(file){
 
 const wKey=(pid,ex)=>pid+"|"+ex.n;
 function getW(pid,ex){
-  const v=DATA.weights[wKey(pid,ex)];
+  const v=(DATA.weights||{})[wKey(pid,ex)];
   if(v!=null) return v;
   return ex.def!=null?ex.def:0;
+}
+function getR(pid,ex){
+  const v=(DATA.reps||{})[wKey(pid,ex)];
+  return v!=null?v:(ex.reps||0);
+}
+function getD(pid,ex){
+  const v=(DATA.dur||{})[wKey(pid,ex)];
+  return v!=null?v:(ex.dur||0);
+}
+function getRest(pid,ex){
+  const v=(DATA.rest||{})[wKey(pid,ex)];
+  return v!=null?v:(ex.rest||0);
+}
+/* plancher de récupération : on ne descend pas sous 60 % du programme, ni sous 30 s */
+const restFloor=ex=>Math.max(30,Math.round(ex.rest*0.6));
+/* index de la charge la plus proche dans une liste composable */
+function nearest(list,w){
+  let k=list.indexOf(w);
+  if(k<0){ k=0; list.forEach((v,j)=>{ if(Math.abs(v-w)<Math.abs(list[k]-w)) k=j; }); }
+  return k;
+}
+
+/* =========================================================
+   2 bis. NIVEAU DE DIFFICULTÉ
+   Un niveau par séance (A, B, C), conservé d'une fois sur l'autre et inscrit
+   dans l'historique. Monter d'un niveau suit une progression double : on ajoute
+   des répétitions d'abord, et seulement une fois la marge atteinte on passe au
+   cran de charge suivant en revenant aux répétitions de départ. C'est ce qui
+   rend la montée raisonnable : jamais plus d'un cran, jamais une charge que la
+   barre ne sait pas composer.
+   ========================================================= */
+/* Ces trois plafonds tiennent la séance sous 45 minutes. Une répétition en plus
+   coûte du temps sur toutes les séries ; un cran de charge n'en coûte aucun.
+   D'où une marge courte avant de charger, et des plafonds bas là où il n'y a
+   rien à charger (poids du corps, élastique, gainage). */
+const MARGE_REPS=1;    // répétitions gagnées avant de passer au cran de charge
+const MAX_REPS=4;      // plafond au poids du corps, au-dessus de l'objectif
+const MAX_DUR=20;      // plafond en secondes sur le gainage
+
+/* Trois leviers, dans cet ordre : répétitions, puis charge, puis récupération.
+   Quand la barre et les haltères sont au maximum de l'inventaire, il ne reste
+   que la densité : raccourcir la récup durcit la séance et, contrairement aux
+   répétitions, la raccourcit au lieu de l'allonger. */
+function cutRest(pid,e){
+  const k=wKey(pid,e), bas=restFloor(e), cur=getRest(pid,e);
+  if(e.rest<=0||cur<=bas) return false;
+  DATA.rest[k]=Math.max(bas,cur-5);
+  return true;
+}
+
+function levelUp(pid){
+  const p=PROGRAM.find(q=>q.id===pid); if(!p) return 0;
+  p.ex.forEach(e=>{
+    const k=wKey(pid,e);
+    if(e.load==="none") return;                       // échauffement, étirements
+    if(e.type==="time"){
+      if(getD(pid,e)<(e.dur||0)+MAX_DUR) DATA.dur[k]=getD(pid,e)+5;
+      else cutRest(pid,e);
+      return;
+    }
+    if(e.load==="bar"||e.load==="db"){
+      const cur=getR(pid,e);
+      if(cur<(e.reps||0)+MARGE_REPS){ DATA.reps[k]=cur+1; return; }
+      const list=e.load==="bar"?BAR:DB, i=nearest(list,getW(pid,e));
+      if(i<list.length-1){ DATA.weights[k]=list[i+1]; DATA.reps[k]=e.reps; return; }
+      if(cur<(e.reps||0)+MAX_REPS){ DATA.reps[k]=cur+1; return; }  // déjà au plus lourd
+      cutRest(pid,e);
+      return;
+    }
+    if(getR(pid,e)<(e.reps||0)+MAX_REPS) DATA.reps[k]=getR(pid,e)+1;  // poids du corps, élastique
+    else cutRest(pid,e);
+  });
+  DATA.level[pid]=(DATA.level[pid]||0)+1;
+  return DATA.level[pid];
+}
+
+/* Applique un niveau en tenant le budget de 45 minutes. Si la montée déborde,
+   on la paie en récupération, seul levier qui durcit la séance en la
+   raccourcissant. Et si même là ça ne rentre plus, on revient en arrière
+   plutôt que d'allonger la séance. */
+function raiseLevel(pid){
+  const p=PROGRAM.find(q=>q.id===pid); if(!p) return 0;
+  const avant=JSON.stringify({w:DATA.weights,r:DATA.reps,d:DATA.dur,t:DATA.rest,l:DATA.level});
+  const empreinte=()=>JSON.stringify(p.ex.map(e=>[getW(pid,e),getR(pid,e),getD(pid,e),getRest(pid,e)]));
+  const depart=empreinte();
+  const n=levelUp(pid);
+  while(estimate(p)>45){
+    const e=p.ex.filter(x=>x.rest>0&&getRest(pid,x)>restFloor(x))
+                .sort((a,b)=>getRest(pid,b)-getRest(pid,a))[0];
+    if(!e) break;
+    cutRest(pid,e);
+  }
+  const bloque = estimate(p)>45, fige = empreinte()===depart;
+  if(bloque||fige){
+    const v=JSON.parse(avant);
+    DATA.weights=v.w; DATA.reps=v.r; DATA.dur=v.d; DATA.rest=v.t; DATA.level=v.l;
+    toast(bloque ? "Séance déjà à 45 minutes : impossible d'en ajouter"
+                 : "Maximum atteint avec ce matériel : ajoute un disque dans Matériel");
+    return 0;
+  }
+  save();
+  return n;
+}
+const levelOf=pid=>(DATA.level||{})[pid]||0;
+const lastOf=pid=>DATA.history.filter(h=>h.id===pid)[0]||null;
+
+function deleteSession(d){
+  DATA.history=DATA.history.filter(h=>h.d!==d);
+  DATA.deleted[d]=Date.now();
+  DATA.deleted=trimDeleted(DATA.deleted);
+  save();
 }
 
 /* =========================================================
@@ -473,7 +655,7 @@ function startSession(idx){
   audioOn(); keepAwake(true);
   const p=PROGRAM[idx];
   S={idx, p, i:0, set:1, log:[], t0:Date.now(),
-     w:p.ex.map(e=>getW(p.id,e)), reps:p.ex.map(e=>e.reps||0)};
+     w:p.ex.map(e=>getW(p.id,e)), reps:p.ex.map(e=>getR(p.id,e))};
   render();
 }
 
@@ -487,8 +669,9 @@ function validateSet(){
   const last = S.set>=e.sets;
   const lastEx = S.i>=S.p.ex.length-1;
   if(!last||!lastEx){
-    if(e.rest>0){
-      Timer.start(e.rest,"Récupération",()=>{ advance(); render(); });
+    const rest=getRest(S.p.id,e);
+    if(rest>0){
+      Timer.start(rest,"Récupération",()=>{ advance(); render(); });
       if(last) advance(); else S.set++;
       return;
     }
@@ -503,7 +686,21 @@ function advance(){
 
 function startWork(){
   const e=curEx();
-  Timer.start(e.dur, e.n, ()=>{ validateSet(); render(); });
+  Timer.start(getD(S.p.id,e), e.n, ()=>{ validateSet(); render(); });
+}
+
+/* Séance trop facile : un cran de plus, tout de suite. Les séries déjà
+   inscrites dans le journal restent telles quelles — c'est ce qui a réellement
+   été soulevé. Mais les charges de la séance sont toutes relevées, y compris
+   celles des exercices passés : `finish()` les recopie dans `DATA.weights`, et
+   laisser les anciennes valeurs annulerait la montée pour ces exercices-là. */
+function harder(){
+  const pid=S?S.p.id:null; if(!pid) return;
+  const n=raiseLevel(pid);
+  if(!n) return render();
+  S.p.ex.forEach((e,i)=>{ S.w[i]=getW(pid,e); S.reps[i]=getR(pid,e); });
+  toast("Niveau "+n+" : la suite de la séance est relevée");
+  render();
 }
 
 async function finish(){
@@ -515,12 +712,12 @@ async function finish(){
     const per = l.load==="bar" ? l.w : l.w*2;
     vol += per*l.r*(l.side?2:1);
   });
-  DATA.history.unshift({d:Date.now(), id:S.p.id, name:S.p.name, mins, vol:Math.round(vol), sets, log:S.log});
+  DATA.history.unshift({d:Date.now(), id:S.p.id, name:S.p.name, mins, vol:Math.round(vol), sets, lvl:levelOf(S.p.id), log:S.log});
   DATA.history=DATA.history.slice(0,60);
   S.p.ex.forEach((e,i)=>{ if(e.load==="bar"||e.load==="db") DATA.weights[wKey(S.p.id,e)]=S.w[i]; });
   DATA.nextIdx=(S.idx+1)%PROGRAM.length;
   await save();
-  const done={mins,vol:Math.round(vol),sets,name:S.p.name,log:S.log};
+  const done={mins,vol:Math.round(vol),sets,name:S.p.name,id:S.p.id,log:S.log};
   S=null; renderDone(done);
 }
 
@@ -543,9 +740,12 @@ function weekCount(){
   return DATA.history.filter(h=>h.d>=mon.getTime()).length;
 }
 
+const jour=d=>new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"});
+
 function renderHome(){
   const idx=DATA.nextIdx%PROGRAM.length, p=PROGRAM[idx];
   const h=DATA.history;
+  const lvl=levelOf(p.id), prec=lastOf(p.id);
   view.innerHTML=`
   <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
     <div><h1>Salle à la maison</h1><div class="sub">3 séances par semaine · 45 min maxi</div></div>
@@ -555,10 +755,12 @@ function renderHome(){
     <div class="kicker">Prochaine séance</div>
     <h2>${p.id} · ${esc(p.name)}</h2>
     <p class="focus">${esc(p.focus)}</p>
+    ${prec?`<p class="focus" style="color:var(--steel);margin-top:8px">Dernière séance ${p.id} le ${jour(prec.d)}, au niveau ${prec.lvl||0}.</p>`:""}
     <div class="meta">
       <div><b>${estimate(p)}</b>minutes estimées</div>
       <div><b>${p.ex.length-2}</b>exercices</div>
       <div><b>${weekCount()}/3</b>faites cette semaine</div>
+      <div><b>${lvl}</b>niveau de difficulté</div>
     </div>
   </div>
   <button class="cta" data-start="${idx}">Commencer la séance ${p.id}</button>
@@ -572,11 +774,16 @@ function renderHome(){
       </button>`).join("")}
     <div class="section-h">Historique</div>
     ${h.length?h.slice(0,12).map(s=>`
-      <div class="hist">
-        <span class="d">${new Date(s.d).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"})}</span>
-        <span class="n">${s.id} · ${esc(s.name)}</span>
-        <span class="v">${s.mins} min · ${s.vol.toLocaleString("fr-FR")} kg</span>
-      </div>`).join(""):
+      <div class="swipe">
+        <button class="swipe-del" data-delh="${s.d}">Supprimer</button>
+        <div class="hist">
+          <span class="d">${jour(s.d)}</span>
+          <span class="n">${s.id} · ${esc(s.name)}</span>
+          ${s.lvl?`<i class="lvl">niv. ${s.lvl}</i>`:""}
+          <span class="v">${s.mins} min · ${s.vol.toLocaleString("fr-FR")} kg</span>
+        </div>
+      </div>`).join("")+
+      `<div class="empty" style="padding:14px 0 0">Balaie une ligne vers la gauche pour la supprimer.</div>`:
       `<div class="empty">Rien d'enregistré pour l'instant. Finis une séance et elle apparaîtra ici, avec sa durée et le volume soulevé.</div>`}
     ${h.length?`<div class="empty" style="padding-top:16px">Total : ${h.length} séance${h.length>1?"s":""} · ${h.reduce((a,b)=>a+b.mins,0)} minutes.</div>`:""}
   </div>`;
@@ -598,23 +805,23 @@ function renderSession(){
         <div class="pm"><button data-w="-1">−</button><button data-w="1">+</button></div>
       </div>
       <div class="dial">
-        <div class="dl">Répétitions${e.side?" par côté":""}</div><div class="dv">${S.reps[i]}</div><div class="dh">objectif ${e.reps}</div>
+        <div class="dl">Répétitions${e.side?" par côté":""}</div><div class="dv">${S.reps[i]}</div><div class="dh">objectif ${getR(p.id,e)}</div>
         <div class="pm"><button data-r="-1">−</button><button data-r="1">+</button></div>
       </div>
     </div>`;
   } else if(e.type==="reps"){
     dials=`<div class="dials"><div class="dial">
-      <div class="dl">Répétitions${e.side?" par côté":""}</div><div class="dv">${S.reps[i]}</div><div class="dh">objectif ${e.reps}</div>
+      <div class="dl">Répétitions${e.side?" par côté":""}</div><div class="dv">${S.reps[i]}</div><div class="dh">objectif ${getR(p.id,e)}</div>
       <div class="pm"><button data-r="-1">−</button><button data-r="1">+</button></div></div></div>`;
   }
 
   view.innerHTML=`
   <div class="prog">${p.ex.map((_,k)=>`<i class="${k<i?"done":k===i?"now":""}"></i>`).join("")}</div>
-  <div class="exhead"><span class="idx">Séance ${p.id} · exercice ${i+1} sur ${p.ex.length}</span>
+  <div class="exhead"><span class="idx">Séance ${p.id} · niveau ${levelOf(p.id)} · exercice ${i+1} sur ${p.ex.length}</span>
     <button class="idx" id="quit" style="text-decoration:underline;text-underline-offset:3px">Arrêter</button></div>
   <div class="ex">
     <h2>${esc(e.n)}</h2>
-    <div class="gear">${gear}${isTime?` · ${Math.round(e.dur/60*10)/10} min`:` · ${e.sets} série${e.sets>1?"s":""} de ${e.reps}${e.side?" par côté":""}`}</div>
+    <div class="gear">${gear}${isTime?` · ${Math.round(getD(p.id,e)/60*10)/10} min`:` · ${e.sets} série${e.sets>1?"s":""} de ${getR(p.id,e)}${e.side?" par côté":""}`}</div>
     <div class="sets">
       ${Array.from({length:e.sets},(_,k)=>`<i class="${k<S.set-1?"done":k===S.set-1?"now":""}"></i>`).join("")}
       <em>${e.sets>1?`série ${S.set} sur ${e.sets}`:""}</em>
@@ -624,10 +831,12 @@ function renderSession(){
   </div>
   <div class="foot">
     ${isTime
-      ? `<button class="solid blue" id="go">Démarrer · ${Math.floor(e.dur/60)>0?Math.floor(e.dur/60)+" min":""}${e.dur%60?(Math.floor(e.dur/60)?" ":"")+(e.dur%60)+" s":""}</button>`
+      ? (()=>{ const d=getD(p.id,e);
+          return `<button class="solid blue" id="go">Démarrer · ${Math.floor(d/60)>0?Math.floor(d/60)+" min":""}${d%60?(Math.floor(d/60)?" ":"")+(d%60)+" s":""}</button>`; })()
       : `<button class="solid" id="go">Série validée</button>`}
     <div class="under">
       <button id="prev" ${i===0&&S.set===1?"style='visibility:hidden'":""}>Revenir en arrière</button>
+      <button id="hard">Trop facile</button>
       <button id="skip">Passer l'exercice</button>
     </div>
   </div>`;
@@ -664,18 +873,25 @@ function renderGear(){
       <button class="add" id="g-import" style="flex:1;background:var(--concrete-2);color:var(--ink)">Importer</button>
       <input type="file" id="g-file" accept="application/json" style="display:none">
     </div>
-    <div class="section-h">Synchronisation entre appareils</div>
-    <div class="empty" style="border:0;padding:0 0 12px">À renseigner une fois par appareil. La clé reste dans ce navigateur, elle n'est jamais publiée dans le dépôt.</div>
+    <div class="section-h">Sauvegarde en ligne, chiffrée</div>
+    <div class="empty" style="border:0;padding:0 0 12px">À renseigner une fois par appareil. Tes séances sont chiffrées dans ce navigateur avant d'être envoyées : le serveur ne stocke que des octets illisibles. La phrase ne sort jamais d'ici et n'est jamais publiée dans le dépôt. Si tu la perds, la sauvegarde est définitivement perdue.</div>
     <div class="gline" style="display:block">
       <label style="display:block;margin-bottom:8px">Adresse du serveur</label>
       <input type="url" id="s-url" value="${esc((DATA.sync&&DATA.sync.url)||"")}" placeholder="https://seances-sync....workers.dev" style="width:100%;text-align:left">
     </div>
     <div class="gline" style="display:block">
-      <label style="display:block;margin-bottom:8px">Clé</label>
+      <label style="display:block;margin-bottom:8px">Phrase de chiffrement</label>
       <input type="password" id="s-key" value="${esc((DATA.sync&&DATA.sync.key)||"")}" style="width:100%;text-align:left">
     </div>
-    <div class="gline"><button class="add" id="s-now" style="flex:1">Synchroniser maintenant</button></div>
-    <div class="empty" style="border:0;padding:8px 0 0">${DATA.syncedAt?"Dernière synchronisation : "+new Date(DATA.syncedAt).toLocaleString("fr-FR"):"Jamais synchronisé pour l'instant."}</div>
+    <div class="gline"><button class="add" id="s-now" style="flex:1">Sauvegarder maintenant</button></div>
+    <div class="empty" style="border:0;padding:8px 0 0">${DATA.syncedAt?"Dernière sauvegarde : "+new Date(DATA.syncedAt).toLocaleString("fr-FR"):"Jamais sauvegardé pour l'instant."}</div>
+    <div class="section-h">Jeton à donner au serveur</div>
+    <div class="empty" style="border:0;padding:0 0 12px">Le serveur ne connaît pas ta phrase : il reçoit ce jeton, calculé à partir d'elle et impossible à remonter. C'est lui, et lui seul, qu'il faut coller dans <code>npx wrangler secret put SYNC_KEY</code>.</div>
+    <div class="gline" style="display:block">
+      <button class="add" id="s-token" style="width:100%">Afficher le jeton</button>
+      <div id="s-token-out" style="display:none;margin-top:10px;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
+           word-break:break-all;background:rgba(21,23,27,.045);padding:12px;border-radius:10px"></div>
+    </div>
   </div>
   <div class="foot"><button class="solid" id="g-save">Enregistrer le matériel</button></div>`;
 }
@@ -693,7 +909,9 @@ function readGear(){
   if(el("s-url")) DATA.sync={url:el("s-url").value.trim().replace(/\/$/,""), key:el("s-key").value.trim()};
 }
 
+let lastDone=null;
 function renderDone(d){
+  lastDone=d;
   const lines={};
   d.log.forEach(l=>{
     const k=l.n; lines[k]=lines[k]||[];
@@ -710,6 +928,8 @@ function renderDone(d){
     <div class="lines">
       ${Object.keys(lines).map(k=>`<div>${esc(k)}<span>${lines[k].join(" · ")}</span></div>`).join("")}
     </div>
+    <div class="empty" style="padding-top:18px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
+    <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1">C'était trop facile</button></div>
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
@@ -738,9 +958,29 @@ view.addEventListener("click",ev=>{
   }
   if(b.dataset.del){ readGear(); DATA.gear.plates.splice(+b.dataset.del,1); buildLoads(); return renderGear(); }
   if(b.id==="s-now"){ readGear(); buildLoads(); DATA.updated=Date.now(); localSave(); return syncNow(false).then(()=>renderGear()); }
+  if(b.id==="s-token"){
+    readGear();
+    const out=el("s-token-out"), phrase=(DATA.sync&&DATA.sync.key)||"";
+    if(!phrase) return toast("Saisis d'abord ta phrase de chiffrement");
+    out.style.display="block"; out.textContent="calcul…";
+    return derive(phrase).then(k=>{ out.textContent=k.token; })
+                         .catch(()=>{ out.textContent="Chiffrement indisponible sur ce navigateur."; });
+  }
   if(b.id==="g-export"){ readGear(); save(); return exportData(); }
   if(b.id==="g-import"){ return el("g-file").click(); }
   if(b.id==="g-save"){ readGear(); buildLoads(); save(); toast("Matériel enregistré"); return render(); }
+  if(b.id==="hard") return harder();
+  if(b.id==="hard-done"){
+    const n=raiseLevel(lastDone.id);
+    if(n) toast("Niveau "+n+" : la prochaine séance "+lastDone.id+" partira de là");
+    return renderDone(lastDone);
+  }
+  if(b.dataset.delh){
+    const d=+b.dataset.delh, s=DATA.history.find(h=>h.d===d);
+    if(s&&!confirm("Supprimer la séance "+s.id+" du "+jour(d)+" ?")) return render();
+    deleteSession(d); toast("Séance supprimée");
+    return render();
+  }
   if(b.id==="go"){ const e=curEx(); return e.type==="time"?startWork():(validateSet(),render()); }
   if(b.id==="skip"){
     Timer.stop(); S.i++; S.set=1;
@@ -758,15 +998,51 @@ view.addEventListener("click",ev=>{
   }
   if(b.dataset.w){
     const e=curEx(), list=e.load==="bar"?BAR:DB;
-    let k=list.indexOf(S.w[S.i]);
-    if(k<0){ k=0; list.forEach((v,j)=>{ if(Math.abs(v-S.w[S.i])<Math.abs(list[k]-S.w[S.i])) k=j; }); }
-    k=Math.min(list.length-1,Math.max(0,k+ +b.dataset.w));
+    const k=Math.min(list.length-1,Math.max(0,nearest(list,S.w[S.i])+ +b.dataset.w));
     S.w[S.i]=list[k]; return render();
   }
   if(b.dataset.r){
     S.reps[S.i]=Math.max(0,S.reps[S.i]+ +b.dataset.r); return render();
   }
 });
+
+/* Balayage vers la gauche sur une ligne d'historique : la ligne glisse et
+   découvre le bouton « Supprimer ». Le geste est suivi au doigt, et on ne prend
+   la main que s'il est franchement horizontal, pour ne pas bloquer le défilement. */
+const OUVERT=-108;
+let sw=null;
+view.addEventListener("pointerdown",ev=>{
+  const wrap=ev.target.closest(".swipe");
+  if(!wrap||ev.target.closest(".swipe-del")) return;
+  sw={wrap, line:wrap.querySelector(".hist"), x:ev.clientX, y:ev.clientY,
+      dx:wrap.classList.contains("open")?OUVERT:0, sens:null, id:ev.pointerId};
+});
+view.addEventListener("pointermove",ev=>{
+  if(!sw||ev.pointerId!==sw.id) return;
+  const dx=ev.clientX-sw.x, dy=ev.clientY-sw.y;
+  if(sw.sens===null){
+    if(Math.abs(dx)<6&&Math.abs(dy)<6) return;
+    sw.sens=Math.abs(dx)>Math.abs(dy)?"h":"v";
+    if(sw.sens==="h"){ try{ sw.wrap.setPointerCapture(ev.pointerId); }catch(e){} }
+  }
+  if(sw.sens!=="h") return;
+  const depart=sw.wrap.classList.contains("open")?OUVERT:0;
+  sw.dx=Math.max(OUVERT,Math.min(0,depart+dx));
+  sw.line.style.transition="none";
+  sw.line.style.transform="translateX("+sw.dx+"px)";
+});
+function endSwipe(){
+  if(!sw) return;
+  sw.line.style.transition=""; sw.line.style.transform="";
+  if(sw.sens==="h"){
+    const ouvrir=sw.dx<OUVERT/2;
+    if(ouvrir) document.querySelectorAll(".swipe.open").forEach(o=>{ if(o!==sw.wrap) o.classList.remove("open"); });
+    sw.wrap.classList.toggle("open",ouvrir);
+  }
+  sw=null;
+}
+view.addEventListener("pointerup",endSwipe);
+view.addEventListener("pointercancel",endSwipe);
 
 el("t-toggle").onclick=()=>Timer.toggle();
 el("t-plus").onclick=()=>Timer.add(15);
