@@ -21,6 +21,16 @@ Chaque `git push` redéploie en une minute environ.
 Après modification, penser à `git push` : le service worker sert le réseau en
 priorité, donc la nouvelle version arrive dès que le téléphone est connecté.
 
+## Accueil
+
+L'écran d'accueil liste les exercices de la prochaine séance avec leurs
+paramètres tels qu'ils seront proposés — séries, répétitions, charge ou durée,
+récupération — niveau de difficulté compris.
+
+La séance mise en avant suit le cycle A → B → C, sauf quand la semaine en cours
+ne compte aucune séance : le programme est hebdomadaire, on repart alors de A
+plutôt que de reprendre le cycle laissé en plan la semaine d'avant.
+
 ## Niveau de difficulté
 
 Chaque séance (A, B, C) porte son propre niveau, conservé d'une fois sur l'autre

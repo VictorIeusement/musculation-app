@@ -103,6 +103,11 @@
   .hist .v{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums;flex:none}
   .empty{padding:30px 0 10px;color:var(--steel);font-size:14px;line-height:1.5;border-top:1px solid var(--line)}
 
+  .pl{padding:11px 0;border-top:1px solid var(--line)}
+  .pl .pn{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .pl .pp{display:block;font-size:13px;color:var(--steel);margin-top:3px;font-variant-numeric:tabular-nums}
+  .pl.soft .pn{font-weight:600;color:var(--steel)}
+
   /* balayage vers la gauche sur une ligne d'historique */
   .swipe{position:relative;overflow:hidden}
   .swipe .hist{position:relative;z-index:1;background:var(--concrete);transition:transform .18s ease;touch-action:pan-y}
@@ -740,10 +745,28 @@ function weekCount(){
   return DATA.history.filter(h=>h.d>=mon.getTime()).length;
 }
 
+/* Le programme est hebdomadaire : une semaine sans séance repart de A, plutôt
+   que de mettre en avant la B ou la C laissées en cours la semaine d'avant. */
+function nextSession(){
+  return weekCount()===0 ? 0 : DATA.nextIdx%PROGRAM.length;
+}
+
+/* Paramètres tels qu'ils seront proposés, niveau de difficulté compris. */
+const duree=s=>s>=60 ? (s%60 ? Math.floor(s/60)+" min "+(s%60) : Math.round(s/60)+" min") : s+" s";
+function paramsOf(pid,e){
+  if(e.type==="time") return (e.sets>1?e.sets+" × ":"")+duree(getD(pid,e));
+  const charge={bar:fmt(getW(pid,e))+" kg",
+                db:fmt(getW(pid,e))+" kg par haltère",
+                bw:"poids du corps", band:"élastique"}[e.load];
+  const rec=getRest(pid,e);
+  return e.sets+" × "+getR(pid,e)+(e.side?" par côté":"")+
+         (charge?" · "+charge:"")+(rec?" · récup "+duree(rec):"");
+}
+
 const jour=d=>new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"});
 
 function renderHome(){
-  const idx=DATA.nextIdx%PROGRAM.length, p=PROGRAM[idx];
+  const idx=nextSession(), p=PROGRAM[idx];
   const h=DATA.history;
   const lvl=levelOf(p.id), prec=lastOf(p.id);
   view.innerHTML=`
@@ -765,6 +788,12 @@ function renderHome(){
   </div>
   <button class="cta" data-start="${idx}">Commencer la séance ${p.id}</button>
   <div class="section">
+    <div class="section-h">Au programme, séance ${p.id}</div>
+    ${p.ex.map(e=>`
+      <div class="pl${e.load==="none"?" soft":""}">
+        <span class="pn">${esc(e.n)}</span>
+        <span class="pp">${paramsOf(p.id,e)}</span>
+      </div>`).join("")}
     <div class="section-h">Les trois séances</div>
     ${PROGRAM.map((q,i)=>`
       <button class="row ${i===idx?"next":""}" data-start="${i}">

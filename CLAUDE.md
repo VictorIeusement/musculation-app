@@ -39,6 +39,10 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
 3. SON, VIBRATION, VEILLE — `AudioContext` créé au premier geste utilisateur, `wakeLock`.
 4. TIMER — décompte basé sur un horodatage de fin, pour rester juste après une mise en arrière-plan.
 5. ÉTAT DE SÉANCE, 6. RENDU, 7. INTERACTIONS, 8. DÉMARRAGE.
+   Côté accueil : `nextSession()` choisit la séance mise en avant — le cycle
+   `DATA.nextIdx`, sauf si la semaine en cours est vide, auquel cas on repart de
+   A. `paramsOf()` rend les paramètres réels d'un exercice (séries, répétitions,
+   charge ou durée, récup), niveau de difficulté compris.
 
 ## Contraintes à respecter
 - Charges de barre : uniquement les combinaisons symétriques calculées par
