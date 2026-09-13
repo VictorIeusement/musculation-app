@@ -457,7 +457,7 @@ function figureDe(nom){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[]};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0};
 let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
@@ -495,6 +495,7 @@ function merge(a,b){
     weights:both("weights"), reps:both("reps"), dur:both("dur"), rest:both("rest"), level:both("level"),
     deleted:trimDeleted(dead),
     body:fusionCorps(a.body,b.body),
+    bodyFrom:(newer.bodyFrom!=null?newer.bodyFrom:older.bodyFrom)||0,
     gear:newer.gear||older.gear,
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
@@ -510,6 +511,16 @@ function merge(a,b){
    le reste : stockage local, et chiffrées si la sauvegarde en ligne est active.
    ========================================================= */
 const jourDe=t=>new Date(t).toISOString().slice(0,10);
+
+/* Une balance qui change de mode ou de profil produit une rupture : les mesures
+   d'avant ne sont pas comparables à celles d'après. `bodyFrom` fixe le début du
+   suivi ; ce qui précède est ignoré partout sans être effacé — c'est un réglage
+   qui se défait, pas une suppression. Et comme il vit dans les données et non
+   dans l'import, il résiste au réimport du même fichier. */
+function mesuresRetenues(){
+  const d=DATA.bodyFrom||0;
+  return (DATA.body||[]).filter(m=>m.d>=d);
+}
 
 /* Une mesure par jour, la PREMIÈRE : on se pèse le matin à jeun, et une pesée
    du soir après le repas pèse un à deux kilos de plus. Garder la plus tardive
@@ -1182,8 +1193,8 @@ const PLAGES=[[90,"3 mois"],[365,"1 an"],[0,"Tout"]];
    et s'applique aux deux : sinon l'axe se calerait sur les seules mesures et
    les barres d'entraînement déborderaient du cadre. */
 function borneBasse(){
-  if(!plage) return 0;
-  const m=(DATA.body||[])[0], h=(DATA.history||[])[0];
+  if(!plage) return DATA.bodyFrom||0;
+  const m=mesuresRetenues().sort((a,b)=>b.d-a.d)[0], h=(DATA.history||[])[0];
   const fin=Math.max(m?m.d:0, h?h.d:0);
   return fin-plage*86400000;
 }
@@ -1237,7 +1248,7 @@ const signe=v=>(v>0?"+":v<0?"−":"")+kilo(Math.abs(v));
    information, pas une consigne. L'app ne règle pas la difficulté d'après la
    balance — trop de choses entrent dans ces chiffres pour en tirer un ordre. */
 function tendance(jours){
-  const mes=(DATA.body||[]).slice().sort((a,b)=>b.d-a.d);
+  const mes=mesuresRetenues().sort((a,b)=>b.d-a.d);
   if(mes.length<2) return null;
   const fin=mes[0], cible=fin.d-jours*86400000;
   const deb=mes.find(m=>m.d<=cible)||mes[mes.length-1];
@@ -1335,7 +1346,8 @@ function courbes(mes,seances){
 }
 
 function renderBody(){
-  const mes=(DATA.body||[]).slice().sort((a,b)=>b.d-a.d);
+  const mes=mesuresRetenues().sort((a,b)=>b.d-a.d);
+  const ignorees=(DATA.body||[]).length-mes.length;
   const b0=borneBasse();
   const vues=surPlage(mes,b0), seances=surPlage(DATA.history,b0);
   const der=mes[0];
@@ -1378,6 +1390,12 @@ function renderBody(){
     </tr></thead><tbody>
       ${vues.slice(0,14).map(m=>`<tr><td>${jour(m.d)}</td>${SERIES.map(se=>`<td>${m[se.k]!=null?kilo(m[se.k]):"—"}</td>`).join("")}</tr>`).join("")}
     </tbody></table>
+    <div class="section-h">Début du suivi</div>
+    <div class="gline">
+      <label>Ignorer les mesures d'avant</label>
+      <input type="date" id="b-depuis" value="${DATA.bodyFrom?new Date(DATA.bodyFrom).toISOString().slice(0,10):""}" style="width:150px;text-align:left">
+    </div>
+    <div class="empty" style="border:0;padding:4px 0 0">${ignorees?`${ignorees} mesure${ignorees>1?"s":""} ignorée${ignorees>1?"s":""}, conservée${ignorees>1?"s":""} mais écartée${ignorees>1?"s":""} de tous les calculs. Vide le champ pour les reprendre.`:"À régler si ta balance a changé de mode ou de profil : ce qui précède cette date n'est pas comparable, et fausserait les écarts."}</div>
     <div class="empty" style="border:0;padding-top:14px">${vues.length} mesure${vues.length>1?"s":""} sur la plage${vues.length<mes.length?`, ${mes.length} en mémoire`:""}${vues.length>14?", les 14 dernières ci-dessus":""}, une par jour — la première, celle du matin. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
   </div>
   <input type="file" id="b-file" accept=".csv,text/csv,text/plain" style="display:none">
@@ -1614,6 +1632,12 @@ window.addEventListener("beforeunload",e=>{ if(S){ e.preventDefault(); e.returnV
 view.addEventListener("change",ev=>{
   if(ev.target.id==="g-file"&&ev.target.files[0]) importData(ev.target.files[0]);
   if(ev.target.id==="b-file"&&ev.target.files[0]) importBalance(ev.target.files[0]);
+  if(ev.target.id==="b-depuis"){
+    const v=ev.target.value;
+    DATA.bodyFrom = v ? new Date(v+"T00:00:00").getTime() : 0;
+    save(); renderBody();
+    toast(DATA.bodyFrom?"Suivi repris au "+jour(DATA.bodyFrom):"Toutes les mesures reprises");
+  }
 });
 
 /* Lecture au doigt des courbes : un viseur qui suit le geste et remplace les

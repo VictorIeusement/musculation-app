@@ -62,6 +62,12 @@ si la mesure de référence est trop ancienne pour que la comparaison ait un sen
 Une seule mesure par jour est retenue, la première : on se pèse le matin à jeun,
 et une pesée du soir pèse un à deux kilos de plus.
 
+Le réglage « début du suivi », en bas de l'écran, écarte les mesures antérieures
+à une date. C'est ce qu'il faut quand la balance a changé de mode ou de profil :
+les mesures d'avant ne sont pas comparables à celles d'après et fausseraient tous
+les écarts. Elles ne sont pas effacées, seulement mises de côté — vider le champ
+les reprend — et le réglage résiste au réimport du fichier complet.
+
 Il n'y a pas de connexion automatique à Withings : leur API demande un secret
 qui n'a pas sa place dans un dépôt public, et l'appel direct depuis un
 navigateur est refusé. Il faudrait passer par le Worker de `sync/`.

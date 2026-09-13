@@ -46,6 +46,10 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    une pesée du soir pèse un à deux kilos de plus et ferait remonter la courbe
    pour rien. Withings nomme sa colonne « Gras (kg) », pas « Masse grasse » :
    toute nouvelle marque de balance demande d'élargir `COLONNES`.
+   `DATA.bodyFrom` écarte les mesures antérieures à une date sans les effacer :
+   une balance qui change de mode ou de profil produit une rupture, et ce qui
+   précède n'est pas comparable. Toute lecture des mesures passe par
+   `mesuresRetenues()`, jamais par `DATA.body` directement.
    `periodes()` et `tendance()` mettent l'entraînement en regard des mesures
    sans jamais affirmer de causalité, et se taisent quand la mesure de référence
    est bien plus ancienne que la fenêtre demandée.
