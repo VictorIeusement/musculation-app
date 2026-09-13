@@ -10,7 +10,7 @@ id = "A_REMPLACER"
 
 [vars]
 # Origine autorisée à appeler le Worker. Mettre l'URL exacte du site GitHub Pages.
-ALLOWED_ORIGIN = "https://A_REMPLACER.github.io"
+ALLOWED_ORIGIN = "https://victorieusement.github.io"
 
 # La clé partagée n'est pas ici : elle se pose en secret, hors du dépôt, avec
 #   npx wrangler secret put SYNC_KEY
