@@ -83,6 +83,20 @@ Il n'y a pas de connexion automatique à Withings : leur API demande un secret
 qui n'a pas sa place dans un dépôt public, et l'appel direct depuis un
 navigateur est refusé. Il faudrait passer par le Worker de `sync/`.
 
+## Balance connectée
+
+Une fois la sauvegarde en ligne en place, l'écran Suivi propose de connecter
+Withings. L'app relève alors les nouvelles pesées toute seule à chaque ouverture
+de l'écran, au plus une fois toutes les six heures.
+
+L'autorisation est détenue par le Worker, jamais par l'app : un secret client
+n'a pas sa place dans un fichier publié sur GitHub Pages. Côté Cloudflare, il
+faut deux secrets, `WITHINGS_ID` et `WITHINGS_SECRET`, et déclarer chez Withings
+une URL de redirection qui pointe sur `<url-du-worker>/withings/callback`.
+
+L'import de fichier reste disponible et donne les mêmes courbes : il sert de
+recours si la liaison casse.
+
 ## Illustrations et vidéos
 
 Chaque exercice est accompagné, pendant la séance, d'un schéma montrant la

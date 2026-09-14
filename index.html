@@ -576,7 +576,7 @@ function figureDe(nom){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0,balanceAt:0};
 let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
@@ -618,7 +618,7 @@ function merge(a,b){
     gear:newer.gear||older.gear,
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
-    sync:a.sync, syncedAt:a.syncedAt, cur:a.cur
+    sync:a.sync, syncedAt:a.syncedAt, cur:a.cur, balanceAt:a.balanceAt||0
   };
 }
 
@@ -1519,6 +1519,16 @@ function renderBody(){
       <div class="empty" style="border:0">Importe l'export de ta balance pour voir ton poids, ta masse grasse et ta masse musculaire évoluer ici.
 
       Sur le site de Withings, compte → télécharger mes données ; le fichier <code>weight.csv</code> de l'archive est celui à importer. Les exports d'autres balances passent aussi, tant que le fichier a une colonne de date et une de poids.</div>`}
+    <div class="section-h">Balance connectée</div>
+    ${DATA.sync&&DATA.sync.url?`
+      <div class="empty" style="border:0;padding:0 0 12px">Une fois connectée, l'app relève les nouvelles pesées toute seule à l'ouverture de cet écran. C'est le serveur qui détient l'autorisation ; l'app ne voit jamais tes identifiants Withings.</div>
+      <div class="gline" style="gap:12px;border:0">
+        <button class="add" id="w-lier" style="flex:1">Connecter Withings</button>
+        <button class="add" id="w-relever" style="flex:1">Relever maintenant</button>
+      </div>
+      <div class="empty" style="border:0;padding:8px 0 0">${DATA.balanceAt?"Dernier relevé : "+new Date(DATA.balanceAt).toLocaleString("fr-FR"):"Jamais relevé."} <button id="w-oublier" style="color:var(--steel);text-decoration:underline;text-underline-offset:3px;font-size:13px;padding:8px 4px">Oublier la liaison</button></div>`
+    :`<div class="empty" style="border:0;padding:0 0 12px">Il faut d'abord la sauvegarde en ligne, dans l'écran Matériel : c'est le serveur qui détient l'autorisation Withings, parce qu'un secret ne peut pas vivre dans une app publiée.</div>`}
+
     ${vues.length?(()=>{
       const per=periodes(vues,seances).filter(p=>p.n||p.dkg!=null);
       const utiles=per.filter(p=>p.n&&(p.dkg!=null||p.dmuscle!=null));
@@ -1663,8 +1673,16 @@ view.addEventListener("click",ev=>{
   if(b.dataset.start!=null) return startSession(+b.dataset.start);
   if(b.id==="home") return render();
   if(b.id==="gear") return renderGear();
-  if(b.id==="suivi") return renderBody();
+  if(b.id==="suivi"){
+    renderBody();
+    if(DATA.sync&&DATA.sync.url&&Date.now()-(DATA.balanceAt||0)>RELEVE)
+      releverBalance(true).then(neuf=>{ if(neuf) renderBody(); });
+    return;
+  }
   if(b.id==="b-import") return el("b-file").click();
+  if(b.id==="w-lier") return connecterBalance();
+  if(b.id==="w-relever") return releverBalance(false).then(()=>renderBody());
+  if(b.id==="w-oublier") return oublierBalance();
   if(b.dataset.plage!=null){ plage=+b.dataset.plage; return renderBody(); }
   if(b.id==="g-add"){
     readGear();
@@ -1844,6 +1862,58 @@ function rendreValeurs(m){
   } else if(st.dataset.origine!=null){
     st.textContent=st.dataset.origine; delete st.dataset.origine;
   }
+}
+
+/* =========================================================
+   Balance connectée
+   Le secret Withings ne peut pas vivre ici : l'app est un fichier statique dans
+   un dépôt public. C'est le Worker qui le détient et qui parle à Withings ;
+   l'app ne fait que lui demander, avec le même jeton que la sauvegarde. La
+   liaison suit donc la sauvegarde en ligne : pas de Worker, pas de balance.
+   ========================================================= */
+const RELEVE=6*3600*1000;   // on ne redemande pas plus souvent que ça
+
+async function auWorker(chemin,methode){
+  const s=DATA.sync;
+  if(!s||!s.url||!s.key) throw new Error("configure d'abord la sauvegarde en ligne");
+  const k=await derive(s.key);
+  const r=await fetch(s.url+chemin,{method:methode||"GET",
+    headers:{authorization:"Bearer "+k.token},cache:"no-store"});
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(j.error||("le serveur a répondu "+r.status));
+  return j;
+}
+
+async function connecterBalance(){
+  try{
+    const j=await auWorker("/withings/start","POST");
+    location.href=j.authorize;          // Withings renverra sur le Worker
+  }catch(e){ toast("Balance : "+e.message); }
+}
+
+async function oublierBalance(){
+  if(!confirm("Oublier la liaison Withings ? Les mesures déjà relevées restent.")) return;
+  try{ await auWorker("/withings/forget","POST"); DATA.balanceAt=0; save(); renderBody(); toast("Liaison oubliée"); }
+  catch(e){ toast("Balance : "+e.message); }
+}
+
+/* `silencieux` : le relevé d'ouverture ne dit rien quand il n'y a rien à dire. */
+async function releverBalance(silencieux){
+  try{
+    const der=mesuresRetenues().sort((a,b)=>b.d-a.d)[0];
+    /* on redemande un jour de recouvrement : une pesée peut arriver en retard */
+    const depuis=der?`?depuis=${der.d-86400000}`:"";
+    const j=await auWorker("/withings/measures"+depuis);
+    DATA.balanceAt=Date.now();
+    if(!j.lie){ if(!silencieux) toast("La balance n'est pas encore connectée"); localSave(); return false; }
+    const avant=(DATA.body||[]).length;
+    DATA.body=fusionCorps(j.mesures||[],DATA.body);
+    save();
+    const n=DATA.body.length-avant;
+    if(!silencieux||n) toast(n?`${n} nouvelle${n>1?"s":""} mesure${n>1?"s":""} relevée${n>1?"s":""}`
+                             :"Aucune mesure nouvelle");
+    return n>0;
+  }catch(e){ if(!silencieux) toast("Balance : "+e.message); return false; }
 }
 
 function importBalance(file){

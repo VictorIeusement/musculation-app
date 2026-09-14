@@ -61,6 +61,19 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    `periodes()` et `tendance()` mettent l'entraînement en regard des mesures
    sans jamais affirmer de causalité, et se taisent quand la mesure de référence
    est bien plus ancienne que la fenêtre demandée.
+2 quater. BALANCE CONNECTÉE — le secret Withings ne peut pas vivre dans l'app,
+   qui est publiée : c'est le Worker qui le détient et qui parle à Withings.
+   `auWorker()` l'appelle avec le même jeton que la sauvegarde, donc la liaison
+   suit la sauvegarde en ligne — pas de Worker, pas de balance. Le relevé est
+   automatique à l'ouverture de l'écran Suivi, au plus une fois toutes les six
+   heures (`RELEVE`), avec un jour de recouvrement pour rattraper une pesée
+   arrivée en retard. Les mesures relevées passent par `fusionCorps()` comme
+   celles du fichier : même forme, même déduplication.
+   Côté Worker : `/withings/callback` est la seule route non authentifiée — c'est
+   Withings qui y renvoie le navigateur, sans en-tête — et elle est protégée par
+   un `state` tiré au sort, gardé dix minutes et brûlé à l'usage. Le Worker
+   rafraîchit le jeton de lui-même et retient le nouveau `refresh_token` :
+   l'ancien ne vaut plus rien après usage.
 2 bis. NIVEAU DE DIFFICULTÉ — `DATA.level` par séance, `DATA.reps`, `DATA.dur`,
    `DATA.rest` par exercice. `levelUp()` applique un cran (répétitions, puis
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il
