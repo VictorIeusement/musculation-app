@@ -301,29 +301,50 @@
    => 20 / 30 / 35 / 45 kg (chargement symétrique obligatoire)
    Haltères : 1 à 8 kg par haltère
    ========================================================= */
-const DEFAULT_GEAR = {bar:20, plates:[{w:5,n:1},{w:7.5,n:1}], dbBar:2, dbMax:16, dbStep:2};
-let BAR=[], BAR_HINT={}, DB=[];
+/* Deux inventaires distincts, et ce n'est pas un détail : les disques d'une
+   barre olympique ont un alésage de 50 mm, ceux d'un haltère de 28 — ils ne
+   passent pas d'une barre à l'autre. Les disques de barre se comptent en
+   PAIRES (elle se charge des deux côtés), ceux d'haltère en PIÈCES, parce que
+   selon l'exercice on en charge un seul ou les deux. */
+const DEFAULT_GEAR = {bar:20, plates:[{w:5,n:1},{w:7.5,n:1}],
+                      dbBar:2, dbPlates:[{w:2,n:8},{w:1,n:8}]};
+let BAR=[], BAR_HINT={}, DB=[], DB_HINT={}, DB_UNI=[], DB_UNI_HINT={};
 
-/* toutes les charges atteignables en chargeant la barre symétriquement */
-function buildLoads(){
-  const g=DATA.gear, map={};
+/* Toutes les charges atteignables en chargeant symétriquement. `parCran` est le
+   nombre de disques qu'un cran consomme dans l'inventaire : 1 pour une paire de
+   disques de barre, 2 pour un haltère chargé seul (un disque de chaque côté),
+   4 quand il faut deux haltères identiques. C'est ce qui explique qu'un
+   exercice à un seul haltère monte deux fois plus haut avec le même sac. */
+function combos(plates,parCran,base,nom){
+  const map={};
   (function rec(i,load,used){
-    if(i>=g.plates.length){
+    if(i>=plates.length){
       const k=Math.round(load*10)/10;
-      const d=used.length?used.map(fmt).join(" + ")+" de chaque côté":"barre seule";
+      const d=used.length?used.map(fmt).join(" + ")+" de chaque côté":nom;
       if(!(k in map)||d.length<map[k].length) map[k]=d;
       return;
     }
-    const p=g.plates[i];
-    for(let c=0;c<=p.n;c++){
+    const p=plates[i], max=Math.floor((p.n||0)/parCran);
+    for(let c=0;c<=max;c++){
       const u=used.slice(); for(let j=0;j<c;j++) u.push(p.w);
       rec(i+1, load+2*p.w*c, u);
     }
-  })(0,g.bar,[]);
-  BAR=Object.keys(map).map(Number).sort((a,b)=>a-b);
-  BAR_HINT=map;
-  DB=[]; for(let k=0;k<=g.dbMax+1e-9;k+=g.dbStep) DB.push(Math.round((g.dbBar+k)*10)/10);
+  })(0,base,[]);
+  return {liste:Object.keys(map).map(Number).sort((a,b)=>a-b), hint:map};
 }
+function buildLoads(){
+  const g=DATA.gear;
+  const b=combos(g.plates||[],1,g.bar,"barre seule");
+  BAR=b.liste; BAR_HINT=b.hint;
+  const deux=combos(g.dbPlates||[],4,g.dbBar,"haltère seul");
+  DB=deux.liste; DB_HINT=deux.hint;
+  const un=combos(g.dbPlates||[],2,g.dbBar,"haltère seul");
+  DB_UNI=un.liste; DB_UNI_HINT=un.hint;
+}
+/* Un exercice à un SEUL haltère peut recevoir tout le sac : il a sa propre
+   liste de charges, plus haute et plus fine que celle des exercices à deux. */
+const listeDe=e=> e.load==="bar" ? BAR : (e.uni?DB_UNI:DB);
+const hintDe=e=> e.load==="bar" ? BAR_HINT : (e.uni?DB_UNI_HINT:DB_HINT);
 
 const PROGRAM = [
 {
@@ -334,7 +355,7 @@ const PROGRAM = [
      cues:["Cercles de bras, 20 en avant, 20 en arrière.","Élastique : 20 écartés devant la poitrine.","15 pompes lentes sur les genoux pour chauffer l'épaule.","2 séries de 8 au développé, barre à vide."]},
     {n:"Développé couché", type:"reps", sets:4, reps:8, rest:90, load:"bar", def:30,
      cues:["Omoplates serrées et bloquées dans le banc tout le long.","Descente en 2 s jusqu'au bas des pecs, remontée franche.","Pieds au sol, fesses en contact : pas de pont.","Sans pareur : garde 2 répétitions en réserve."]},
-    {n:"Développé incliné haltères", type:"reps", sets:3, reps:10, rest:75, load:"db", def:9,
+    {n:"Développé incliné haltères", type:"reps", sets:3, reps:10, rest:75, load:"db", def:8,
      cues:["Banc à 30–40°, pas plus, sinon ça devient une épaule.","Coudes à 45° du buste, poignets au-dessus des coudes.","Ne cogne pas les haltères en haut : garde la tension."]},
     {n:"Pompes sur poignées", type:"reps", sets:3, reps:12, rest:60, load:"bw", part:0.66,
      cues:["Descends plus bas que le sol, c'est tout l'intérêt des poignées.","Corps gainé en planche, bassin ni creusé ni levé.","Vise l'échec technique, pas l'échec total."]},
@@ -361,9 +382,9 @@ const PROGRAM = [
      cues:["Cercles de bras et rotations du buste.","Élastique : 20 écartés devant la poitrine, bras tendus.","2 séries de 10 au rowing, barre à vide."]},
     {n:"Rowing barre buste penché", type:"reps", sets:4, reps:10, rest:90, load:"bar", def:30,
      cues:["Buste à ~45°, dos plat, genoux légèrement fléchis.","Tire la barre vers le nombril, coudes le long du corps.","Le buste ne se relève pas pendant la série.","Repose la barre au sol entre chaque série si le bas du dos chauffe."]},
-    {n:"Rowing unilatéral haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10, side:true,
+    {n:"Rowing unilatéral haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10, side:true, uni:true,
      cues:["Main et genou opposés en appui sur le banc.","Tire coude vers la hanche, pas vers l'épaule.","Épaules parallèles au sol : pas de rotation du buste.","12 répétitions d'un bras, puis 12 de l'autre."]},
-    {n:"Pullover haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10,
+    {n:"Pullover haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10, uni:true,
      cues:["Allongé sur le banc plat, un haltère tenu à deux mains.","Descends derrière la tête bras quasi tendus, jusqu'à l'étirement.","Côtes basses : ne cambre pas pour aller plus loin."]},
     {n:"Tirage visage élastique", type:"reps", sets:3, reps:15, rest:45, load:"band",
      cues:["Assis au sol, jambes tendues, la boucle passée autour des deux pieds.","Une portion de boucle dans chaque main, bras tendus devant : buste droit, dos plat.","Tire vers le front, coudes hauts et écartés, pas vers le ventre.","Bloque 1 s omoplates serrées. Raccourcis la prise pour durcir."]},
@@ -653,15 +674,18 @@ async function load(){
   }catch(e){/* première ouverture, ou stockage refusé par le navigateur */}
   Object.keys(BLANK).forEach(k=>{ if(DATA[k]==null) DATA[k]=JSON.parse(JSON.stringify(BLANK[k])); });
   if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
-  releverPlafondHaltere();
+  migrerHalteres();
   buildLoads();
 }
-/* Les disques sont libres : un haltère monte à 18 kg, pas à 10. L'ancien
-   plafond venait du réglage livré par défaut, jamais touché — on ne le relève
-   donc que s'il est resté tel quel, pour ne pas écraser un réglage voulu. */
-function releverPlafondHaltere(){
-  const g=DATA.gear;
-  if(g && g.dbBar===2 && g.dbStep===2 && g.dbMax===8) g.dbMax=16;
+/* Les haltères se réglaient par un plafond et un pas fixe, ce qui ne décrit
+   aucun sac de disques réel. On passe à un inventaire, comme la barre. Rien à
+   reprendre de l'ancien modèle : un plafond et un pas ne disent pas quels
+   disques on possède. */
+function migrerHalteres(){
+  const g=DATA.gear; if(!g) return;
+  if(!Array.isArray(g.dbPlates)||!g.dbPlates.length)
+    g.dbPlates=JSON.parse(JSON.stringify(DEFAULT_GEAR.dbPlates));
+  delete g.dbMax; delete g.dbStep;
 }
 function localSave(){
   try{ localStorage.setItem(KEY,JSON.stringify(DATA)); }
@@ -897,7 +921,7 @@ function importData(file){
       if(!d.history) throw 0;
       DATA=Object.assign(JSON.parse(JSON.stringify(BLANK)),d);
       if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
-      releverPlafondHaltere();
+      migrerHalteres();
       buildLoads(); save(); render(); toast("Données importées");
     }catch(e){ toast("Fichier illisible : choisis un export de cette app"); }
   };
@@ -907,8 +931,13 @@ function importData(file){
 const wKey=(pid,ex)=>pid+"|"+ex.n;
 function getW(pid,ex){
   const v=(DATA.weights||{})[wKey(pid,ex)];
-  if(v!=null) return v;
-  return ex.def!=null?ex.def:0;
+  const w=v!=null?v:(ex.def!=null?ex.def:0);
+  if(ex.load!=="bar"&&ex.load!=="db") return w;
+  /* Une charge que l'inventaire ne sait pas composer ne doit jamais être
+     proposée : ni un défaut de programme arrondi, ni une valeur enregistrée
+     avant que le sac de disques ne change. */
+  const list=listeDe(ex);
+  return list.length?list[nearest(list,w)]:w;
 }
 function getR(pid,ex){
   const v=(DATA.reps||{})[wKey(pid,ex)];
@@ -972,7 +1001,7 @@ function levelUp(pid){
     if(e.load==="bar"||e.load==="db"){
       const cur=getR(pid,e);
       if(cur<(e.reps||0)+MARGE_REPS){ DATA.reps[k]=cur+1; return; }
-      const list=e.load==="bar"?BAR:DB, i=nearest(list,getW(pid,e));
+      const list=listeDe(e), i=nearest(list,getW(pid,e));
       if(i<list.length-1){ DATA.weights[k]=list[i+1]; DATA.reps[k]=e.reps; return; }
       if(cur<(e.reps||0)+MAX_REPS){ DATA.reps[k]=cur+1; return; }  // déjà au plus lourd
       cutRest(pid,e);
@@ -1033,7 +1062,7 @@ function lowerEx(pid,e){
   const r=getR(pid,e);
   if(r>(e.reps||0)){ DATA.reps[k]=e.reps; return "répétitions ramenées à "+e.reps; }
   if(e.load==="bar"||e.load==="db"){
-    const list=e.load==="bar"?BAR:DB, w=getW(pid,e), i=nearest(list,w);
+    const list=listeDe(e), w=getW(pid,e), i=nearest(list,w);
     const leger=i>0?list[i-1]:null;
     const bas=()=>{ DATA.weights[k]=leger; return "charge ramenée à "+fmt(leger)+" kg"; };
     /* Avec un inventaire court, le cran de charge peut retirer un tiers du
@@ -1611,7 +1640,7 @@ function renderHome(){
 /* Le pas dépend de l'inventaire : sans l'afficher, on ignore avant d'appuyer si
    la charge montera de 2,5 ou de 5 kg. */
 function pasDe(e,w){
-  const list=e.load==="bar"?BAR:DB, i=nearest(list,w);
+  const list=listeDe(e), i=nearest(list,w);
   const h=list[i+1]!=null?Math.round((list[i+1]-list[i])*10)/10:null;
   return h!=null?`pas de ${fmt(h)} kg`:"maximum de l'inventaire";
 }
@@ -1626,8 +1655,10 @@ function renderSession(){
   let dials="";
   if(hasLoad){
     const w=S.w[i];
-    const hint = e.load==="bar" ? (BAR_HINT[w]||"")
-      : (e.uni?"pour l'haltère, barre comprise":"par haltère, barre comprise");
+    const compo=hintDe(e)[w]||"";
+    const hint = e.load==="bar" ? compo
+      : (e.uni?"un seul haltère, barre comprise":"par haltère, les deux pareils")
+        + (compo&&compo!=="haltère seul"?" · "+compo:"");
     dials=`<div class="dials">
       <div class="dial">
         <div class="dl">Charge</div><div class="dv">${fmt(w)} kg</div><div class="dh">${hint}</div>
@@ -1951,9 +1982,10 @@ function renderGear(){
   view.innerHTML=`
   <div class="top"><h1>Matériel</h1><div class="sub">Les charges proposées se recalculent à partir d'ici</div></div>
   <div class="section">
-    <div class="section-h">Barre</div>
+    <div class="section-h">Barre olympique</div>
     <div class="gline"><label>Poids de la barre à vide</label><input type="number" id="g-bar" value="${g.bar}" step="0.5" min="1"><em>kg</em></div>
-    <div class="section-h">Disques, par paire</div>
+    <div class="empty" style="border:0;padding:0 0 4px">Développé couché, rowing barre, soulevé de terre, hip thrust, développé militaire.</div>
+    <div class="section-h">Disques de barre, par paire</div>
     ${g.plates.map((p,i)=>`
       <div class="gline">
         <label>${fmt(p.w)} kg</label>
@@ -1965,11 +1997,23 @@ function renderGear(){
       <button class="add" id="g-add">Ajouter ce disque</button>
     </div>
     <div class="empty" style="border:0;padding:12px 0 0">Charges atteignables : ${BAR.map(v=>fmt(v)).join(" · ")} kg.</div>
+
     <div class="section-h">Haltères</div>
-    <div class="gline"><label>Haltère à vide</label><input type="number" id="g-dbbar" value="${fmt(g.dbBar)}" step="0.5" min="0"><em>kg</em></div>
-    <div class="gline"><label>Disques ajoutables par haltère</label><input type="number" id="g-dbmax" value="${fmt(g.dbMax)}" step="0.5" min="0"><em>kg</em></div>
-    <div class="gline"><label>Plus petit incrément</label><input type="number" id="g-dbstep" value="${fmt(g.dbStep)}" step="0.25" min="0.25"><em>kg</em></div>
-    <div class="empty" style="border:0;padding:12px 0 0">De ${fmt(DB[0])} à ${fmt(DB[DB.length-1])} kg par haltère.</div>
+    <div class="gline"><label>Poids d'un haltère à vide</label><input type="number" id="g-dbbar" value="${fmt(g.dbBar)}" step="0.5" min="0"><em>kg</em></div>
+    <div class="empty" style="border:0;padding:0 0 4px">Leur trou est plus petit que celui d'un disque olympique : ces disques-là ne se montent pas sur la barre, et l'inverse non plus. D'où deux inventaires.</div>
+    <div class="section-h">Disques d'haltère, à la pièce</div>
+    ${(g.dbPlates||[]).map((p,i)=>`
+      <div class="gline">
+        <label>${fmt(p.w)} kg</label>
+        <input type="number" class="g-dn" data-j="${i}" value="${p.n}" step="1" min="0"><em>pièce${p.n>1?"s":""}</em>
+        <button class="del" data-deld="${i}">retirer</button>
+      </div>`).join("")}
+    <div class="gline">
+      <input type="number" id="g-dnew" placeholder="poids" step="0.5" min="0.5" style="flex:1">
+      <button class="add" id="g-dadd">Ajouter ce disque</button>
+    </div>
+    <div class="empty" style="border:0;padding:12px 0 0">À deux haltères identiques — curl, élévations, développé incliné : ${DB.map(v=>fmt(v)).join(" · ")} kg par haltère.</div>
+    <div class="empty" style="border:0;padding:8px 0 0">À un seul haltère — pullover, rowing unilatéral, extension triceps : ${DB_UNI.map(v=>fmt(v)).join(" · ")} kg. Tout le sac part sur la même barre, d'où des charges qui montent deux fois plus haut.</div>
     <div class="section-h">Sauvegarde</div>
     <div class="empty" style="border:0;padding:0 0 12px">Tes séances vivent dans ce navigateur, sur ce téléphone. Vider les données de navigation les efface. Exporte de temps en temps.</div>
     <div class="gline" style="gap:12px">
@@ -2004,12 +2048,14 @@ function readGear(){
   const g=DATA.gear, num=(id,d)=>{const v=parseFloat((el(id)||{}).value); return isNaN(v)?d:v;};
   g.bar=Math.max(1,num("g-bar",g.bar));
   g.dbBar=Math.max(0,num("g-dbbar",g.dbBar));
-  g.dbMax=Math.max(0,num("g-dbmax",g.dbMax));
-  g.dbStep=Math.max(0.25,num("g-dbstep",g.dbStep));
   document.querySelectorAll(".g-n").forEach(inp=>{
     const v=parseInt(inp.value,10); g.plates[+inp.dataset.i].n=isNaN(v)?0:Math.max(0,v);
   });
   g.plates=g.plates.filter(p=>p.n>0).sort((a,b)=>a.w-b.w);
+  document.querySelectorAll(".g-dn").forEach(inp=>{
+    const v=parseInt(inp.value,10); g.dbPlates[+inp.dataset.j].n=isNaN(v)?0:Math.max(0,v);
+  });
+  g.dbPlates=g.dbPlates.filter(p=>p.n>0).sort((a,b)=>a.w-b.w);
   if(el("s-url")) DATA.sync={url:el("s-url").value.trim().replace(/\/$/,""), key:el("s-key").value.trim()};
 }
 
@@ -2095,6 +2141,16 @@ view.addEventListener("click",ev=>{
     buildLoads(); return renderGear();
   }
   if(b.dataset.del){ readGear(); DATA.gear.plates.splice(+b.dataset.del,1); buildLoads(); return renderGear(); }
+  if(b.id==="g-dadd"){
+    readGear();
+    const w=parseFloat(el("g-dnew").value);
+    if(isNaN(w)||w<=0) return toast("Indique un poids de disque");
+    const ex=DATA.gear.dbPlates.find(p=>p.w===w);
+    if(ex) ex.n+=2; else DATA.gear.dbPlates.push({w,n:2});
+    DATA.gear.dbPlates.sort((a,b)=>a.w-b.w);
+    buildLoads(); return renderGear();
+  }
+  if(b.dataset.deld){ readGear(); DATA.gear.dbPlates.splice(+b.dataset.deld,1); buildLoads(); return renderGear(); }
   if(b.id==="s-now"){ readGear(); buildLoads(); DATA.updated=Date.now(); localSave(); return syncNow(false).then(()=>renderGear()); }
   if(b.id==="s-token"){
     readGear();
@@ -2150,7 +2206,7 @@ view.addEventListener("click",ev=>{
     keepAwake(false); Timer.cancel(); S=null; clearCur(); return render();
   }
   if(b.dataset.w){
-    const e=curEx(), list=e.load==="bar"?BAR:DB;
+    const e=curEx(), list=listeDe(e);
     const k=Math.min(list.length-1,Math.max(0,nearest(list,S.w[S.i])+ +b.dataset.w));
     S.w[S.i]=list[k]; return render();
   }

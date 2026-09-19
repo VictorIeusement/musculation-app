@@ -129,6 +129,30 @@ maintenant à un haltère tenu à deux mains au-dessus de la tête. L'exercice y
 gagne au passage d'être chargeable, donc de rentrer dans la progression au lieu
 d'être un exercice muet.
 
+## Barre olympique et haltères : deux inventaires
+
+Les disques d'une barre olympique ont un alésage de 50 mm, ceux d'un haltère
+28 : ils ne passent pas d'une barre à l'autre. L'écran « Matériel » tient donc
+deux inventaires séparés, et les charges proposées ne se mélangent jamais.
+
+Les disques de barre se comptent **par paire** : la barre se charge des deux
+côtés à la fois. Ceux d'haltère se comptent **à la pièce**, parce que le nombre
+d'haltères à charger dépend de l'exercice :
+
+- **Deux haltères identiques** — curl, élévations, développé incliné, mollets,
+  fente bulgare : un cran consomme quatre disques, un de chaque côté de chaque
+  haltère.
+- **Un seul haltère** (`uni:true`) — pullover, rowing unilatéral, extension
+  triceps : un cran n'en consomme que deux, et tout le sac peut partir sur la
+  même barre. Les charges montent donc deux fois plus haut.
+
+`uni:true` sert aussi au volume : un haltère unique ne compte qu'une fois, pas
+deux. L'oublier double silencieusement les kilos de l'exercice.
+
+Aucune charge non composable n'est jamais proposée : `getW()` ramène toute
+valeur sur la liste de l'exercice, qu'elle vienne d'un défaut de programme
+arrondi ou d'un enregistrement fait avant que le sac ne change.
+
 ## Niveau de difficulté
 
 Chaque séance (A, B, C) porte son propre niveau, conservé d'une fois sur l'autre

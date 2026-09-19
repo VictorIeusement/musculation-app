@@ -166,12 +166,17 @@ ligne.
   les mains assis jambes tendues, pas plus. Tout montage demandant plus d'un
   mètre sous tension — du pied jusqu'à la nuque, par exemple — est infaisable et
   n'a pas sa place dans `PROGRAM`.
-- Haltères : les disques sont libres, un haltère monte à 18 kg. Un exercice à un
-  seul haltère tenu à deux mains porte `uni:true`, sinon le volume le compte
-  deux fois.
-- Charges de barre : uniquement les combinaisons symétriques calculées par
-  `buildLoads()` à partir de l'inventaire. Ne jamais proposer une charge non composable.
-- Haltères : incrément minimal = 2 × le plus petit disque, un de chaque côté.
+- Charges : uniquement les combinaisons symétriques calculées par `buildLoads()`
+  à partir de l'inventaire. Ne jamais proposer une charge non composable —
+  `getW()` ramène de lui-même toute valeur sur la liste de l'exercice.
+- DEUX inventaires, jamais mélangés : les disques de barre olympique (comptés
+  par PAIRE, alésage 50 mm) et ceux d'haltère (comptés à la PIÈCE, alésage 28).
+  `listeDe(e)` choisit la bonne liste. Un exercice à un seul haltère (`uni:true`)
+  ne consomme que deux disques par cran au lieu de quatre, donc monte deux fois
+  plus haut : `DB_UNI`, pas `DB`.
+- `uni:true` sert aussi au volume : un haltère unique compte une fois, pas deux.
+  L'oublier double silencieusement les kilos de l'exercice — c'est arrivé au
+  rowing unilatéral et au pullover.
 - Le minuteur doit rester exact si l'écran s'éteint ou si l'app passe en arrière-plan.
 - Pas de dépendance externe : le fichier doit fonctionner hors ligne. Le
   chiffrement passe par `crypto.subtle`, natif au navigateur — rien à charger,
