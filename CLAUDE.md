@@ -33,7 +33,12 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    une barre dont l'axe traverse les épaules s'y voit PAR LA TRANCHE, donc en
    disque (`disque()`), jamais en trait horizontal (`barreFace()`, réservé aux
    figures dessinées de face) — sinon on ne sait plus si la barre est parallèle
-   aux épaules ou dans l'axe du corps. `figureDe()` rend le SVG et annonce la
+   aux épaules ou dans l'axe du corps. Même règle pour le banc : allongé dans
+   son axe, il se dessine en planche (`banc()`) ; assis ou appuyé EN TRAVERS —
+   dips, hip thrust — sa longueur part vers l'observateur et il se voit par le
+   bout (`bancTranche()`). Un haltère unique tenu à deux mains au-dessus de la
+   tête a son axe vertical : `haltDebout()`, pas `halt()`. C'est la même erreur
+   à chaque fois, la profondeur perdue ; le test de non-régression la vérifie. `figureDe()` rend le SVG et annonce la
    vue aux lecteurs d'écran, `videoDe()` fabrique le lien de recherche vidéo.
 2. DONNÉES — `localStorage` (clé `workout:data`), export/import JSON, et
    sauvegarde chiffrée : `localSave()` écrit en local, `save()` ajoute
@@ -78,11 +83,44 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    `DATA.rest` par exercice. `levelUp()` applique un cran (répétitions, puis
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il
    tient le budget de 45 minutes et refuse un cran qui ne changerait rien.
+   `lowerEx()` fait l'inverse, mais sur UN exercice seulement : « trop facile »
+   se juge sur la séance entière et à la fin, « trop dur » sur un exercice et
+   tout de suite. L'asymétrie est voulue, ne pas la « corriger ». Quand le cran
+   de charge retirerait plus de 15 % du poids — inventaire court — c'est une
+   répétition qui part à la place.
 3. SON, VIBRATION, VEILLE — `AudioContext` créé au premier geste utilisateur, `wakeLock`.
 4. TIMER — décompte basé sur un horodatage de fin, pour rester juste après une
    mise en arrière-plan. `stop()` exécute la suite du minuteur, `cancel()` le
    referme sans l'exécuter : quitter ou sauter un exercice pendant une
    récupération passe par `cancel()`, sinon la séance avancerait au passage.
+   La feuille se replie (`basculerReduction()`, préférence à part dans
+   `workout:mini`, jamais dans `DATA`). `reserverSousLaFeuille()` mesure sa
+   hauteur réelle pour caler la réserve sous le contenu ET remonter `.foot`
+   au-dessus d'elle : les deux sont en `position:fixed` au même bord, et sans ça
+   le pied de séance — « Série validée », « Trop dur », « Arrêter » — reste
+   dessous, injoignable pendant toute la récupération.
+   L'alarme (`alarmeDemarre()`) se répète jusqu'au premier contact, plafonnée :
+   sonner dans le vide use la batterie et la patience. Onde carrée, pas
+   sinusoïde — à volume égal elle porte bien plus loin.
+   `keepAwake()` doit tester `wake.released` : le téléphone relâche le verrou de
+   veille tout seul dès que l'app passe en arrière-plan, et le sentinel périmé
+   reste en main. Sans ce test, l'écran s'éteint pour tout le reste de la séance.
+4 bis. JOURNAL ET BILAN — chaque série inscrit le prévu ET le réalisé. Le prévu
+   vient de `S.plan`, figé au démarrage de la séance : relire les réglages
+   courants donnerait une comparaison qui change à chaque montée de niveau.
+   `noterRepos()` attribue la récupération réellement prise à la série qui la
+   précède — elle n'est connue qu'à la fin du décompte. `S.events` garde les
+   crans montés ou descendus et les exercices passés. `bilan()` compare les deux,
+   et `volumeCorps()` estime la part du poids du corps (coefficient `part` de
+   l'exercice × poids mesuré le jour de la séance). Ces deux calculs se font à la
+   LECTURE et non à l'enregistrement : c'est ce qui les rend rétroactifs sur les
+   séances déjà faites, et ce qui laisse une pesée arrivée en retard les
+   compléter. La charge du poids du corps ne se mélange jamais au volume externe :
+   trois séries de pompes pèsent plus lourd que toute la barre d'une séance, et
+   les additionner rendrait l'historique incomparable du jour au lendemain.
+   Une séance enregistrée avant ce journal n'a pas de prévu : `bilan()` le
+   reconstitue à partir de la première série et écarte de la moyenne les
+   exercices sans trace, plutôt que de faire passer une absence pour un échec.
 5. ÉTAT DE SÉANCE — `S` en mémoire, recopié dans `DATA.cur` à chaque changement
    par `saveCur()` (appelé depuis `render()`), relu au démarrage par
    `reprendre()`. La séance en cours reste locale : exclue du PUT, conservée
@@ -123,7 +161,14 @@ ligne.
 - Aucun exercice à l'élastique ne doit supposer un point d'ancrage fixe dans la
   pièce : l'utilisateur n'en a pas. L'ancrage est le pied ou la main libre, et
   il doit se voir sur le schéma. Le réglage de charge est la longueur utile —
-  reculer le pied, écarter les pieds.
+  reculer le pied, raccourcir la prise.
+- L'élastique est une BOUCLE FERMÉE, et courte : elle atteint les pieds depuis
+  les mains assis jambes tendues, pas plus. Tout montage demandant plus d'un
+  mètre sous tension — du pied jusqu'à la nuque, par exemple — est infaisable et
+  n'a pas sa place dans `PROGRAM`.
+- Haltères : les disques sont libres, un haltère monte à 18 kg. Un exercice à un
+  seul haltère tenu à deux mains porte `uni:true`, sinon le volume le compte
+  deux fois.
 - Charges de barre : uniquement les combinaisons symétriques calculées par
   `buildLoads()` à partir de l'inventaire. Ne jamais proposer une charge non composable.
 - Haltères : incrément minimal = 2 × le plus petit disque, un de chaque côté.
@@ -138,6 +183,8 @@ ligne.
 - `estimate()` doit rester sous 45 minutes à tous les niveaux de difficulté :
   c'est `raiseLevel()` qui en répond, et c'est ce qui justifie les plafonds
   `MAX_REPS`, `MAX_DUR` et le plancher de récupération.
+- Un exercice au poids du corps dont l'appui au sol allège la charge porte un
+  coefficient `part` ; sans lui il ne compte pour rien dans la charge estimée.
 - Tout couple texte/fond doit tenir 4,5:1 (3:1 pour le gros texte), et toute
   commande tactile 44 px de haut — par du remplissage, pas en grossissant la
   typographie. Le test du navigateur parcourt chaque écran et le vérifie.

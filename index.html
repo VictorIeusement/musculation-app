@@ -19,8 +19,16 @@
   <div id="view"></div>
   <div id="timer-sheet" class="sheet hidden">
     <div class="sheet-inner">
-      <div class="t-label" id="t-label">Récupération</div>
-      <div class="t-count" id="t-count">01:30</div>
+      <button class="t-head" id="t-reduce" aria-expanded="true" aria-label="Réduire le minuteur">
+        <span class="t-grab" aria-hidden="true"></span>
+        <span class="t-rang">
+          <span class="t-texte">
+            <span class="t-label" id="t-label">Récupération</span>
+            <span class="t-count" id="t-count">01:30</span>
+          </span>
+          <span class="t-chev" aria-hidden="true"></span>
+        </span>
+      </button>
       <div class="t-bar"><span id="t-fill"></span></div>
       <div class="ensuite" id="t-next"></div>
       <div class="t-actions">
@@ -105,7 +113,8 @@
   .row .rt span{display:block;font-size:13px;color:var(--steel);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .go{font-size:13px;color:var(--steel)}
 
-  .hist{border-top:1px solid var(--line);padding:14px 0;display:flex;gap:10px;align-items:baseline}
+  .hist{border-top:1px solid var(--line);padding:14px 0;display:flex;gap:10px;align-items:baseline;
+        width:100%;text-align:left;min-height:44px}
   .hist .d{font-size:13px;color:var(--steel);width:68px;flex:none;font-variant-numeric:tabular-nums}
   .hist .n{font-size:15px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hist .v{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums;flex:none}
@@ -130,8 +139,11 @@
   .prog i.done{background:var(--ink)}
   .prog i.now{background:var(--signal)}
 
-  .exhead{padding:18px 20px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-  .exhead .idx{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums}
+  .exhead{padding:8px 20px 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  /* 44 px de haut par du remplissage, pas en grossissant la typographie : le
+     libellé reste discret, la cible reste atteignable au pouce. */
+  .exhead .idx{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums;
+               display:flex;align-items:center;min-height:44px;padding:0}
   .ex h2{padding:8px 20px 0;font-size:30px;line-height:1.05;font-weight:800;letter-spacing:-.03em}
   .ex .gear{padding:10px 20px 0;font-size:13px;color:var(--steel)}
 
@@ -171,11 +183,16 @@
   .tab th{font-size:12px;color:var(--steel);font-weight:600;text-align:right;padding:8px 0;border-bottom:1px solid var(--line)}
   .tab th:first-child{text-align:left}
   .tab td{text-align:right;padding:9px 0;border-top:1px solid var(--line);color:var(--ink-soft)}
+  .tab th+th,.tab td+td{padding-left:12px}
   .tab td:first-child{text-align:left;color:var(--steel)}
+  /* Une table peut dépasser la largeur du téléphone : elle défile dans son
+     propre cadre, la page ne part jamais de travers. */
+  .tab-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab-wrap .tab{min-width:340px}
   .pastille{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:1px}
 
-  .video{display:block;margin:6px 20px 0;padding:14px 0;font-size:13px;color:var(--steel);
-         text-decoration:underline;text-underline-offset:3px}
+  .video{display:flex;align-items:center;min-height:44px;margin:6px 20px 0;padding:14px 0;
+         font-size:13px;color:var(--steel);text-decoration:underline;text-underline-offset:3px}
 
   .cues{margin:20px 20px 0;padding:16px 16px 16px 18px;background:var(--surface);border-radius:var(--r)}
   .cues li{font-size:14px;line-height:1.5;color:var(--ink-soft);margin-bottom:7px;list-style:none;position:relative;padding-left:14px}
@@ -201,11 +218,31 @@
 
   /* ---------- timer sheet ---------- */
   .sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--surface);color:var(--ink);
-         border-radius:20px 20px 0 0;padding:22px 20px 24px;z-index:40;transition:transform .22s ease}
+         border-radius:20px 20px 0 0;padding:22px 20px 24px;z-index:40;overflow:hidden;transition:transform .22s ease}
   .sheet.hidden{transform:translateY(105%)}
   .sheet.alarm{background:var(--hot)}
-  .t-label{font-size:13px;opacity:.65}
-  .t-count{font-size:68px;font-weight:800;letter-spacing:-.045em;line-height:1;margin:4px 0 14px;font-variant-numeric:tabular-nums}
+  /* Le bandeau est un bouton : il replie la feuille pour rendre les consignes de
+     l'exercice au regard, sans interrompre le décompte. */
+  .t-head{display:block;width:100%;min-height:44px;padding:0;text-align:left}
+  .t-grab{display:block;width:38px;height:4px;margin:0 auto 12px;border-radius:2px;background:var(--line)}
+  .t-rang{display:flex;align-items:center;gap:12px}
+  .t-texte{flex:1;min-width:0}
+  .t-chev{flex:none;position:relative;width:30px;height:30px;color:var(--ink-soft)}
+  .t-chev::before{content:"";position:absolute;left:8px;top:9px;width:12px;height:12px;
+    border-left:2.2px solid currentColor;border-bottom:2.2px solid currentColor;transform:rotate(-45deg)}
+  .sheet.mini .t-chev::before{top:13px;transform:rotate(135deg)}
+  .t-label{display:block;font-size:13px;color:var(--ink-soft)}
+  .t-count{display:block;font-size:68px;font-weight:800;letter-spacing:-.045em;line-height:1;margin:4px 0 14px;font-variant-numeric:tabular-nums}
+  /* Repliée : une barre basse. Le décompte reste lisible, la progression passe
+     sur l'arête haute, et « Passer » reste à portée de pouce. */
+  .sheet.mini{padding:8px 16px 10px}
+  .sheet.mini .sheet-inner{display:flex;align-items:center;gap:12px}
+  .sheet.mini .t-head{flex:1;min-width:0}
+  .sheet.mini .t-grab,.sheet.mini .ensuite,.sheet.mini .t-actions{display:none}
+  .sheet.mini .t-texte{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .sheet.mini .t-count{font-size:27px;margin:0;letter-spacing:-.02em}
+  .sheet.mini .t-bar{position:absolute;left:0;right:0;top:0;height:3px;border-radius:0}
+  .sheet.mini .solid.wide{flex:0 0 auto;width:auto;min-height:44px;padding:11px 15px;font-size:14px}
   .t-bar{height:4px;background:rgba(237,239,242,.18);border-radius:2px;overflow:hidden}
   .t-bar span{display:block;height:100%;width:100%;background:var(--ink);border-radius:2px}
   .ensuite{margin:16px 0 0;padding:13px 15px;border-radius:12px;background:var(--concrete-2)}
@@ -216,6 +253,17 @@
   .t-actions{display:flex;gap:10px;margin:14px 0 12px}
   .ghost{flex:1;padding:15px 13px;border-radius:11px;background:var(--concrete-2);color:var(--ink);font-size:14px;font-weight:600}
   .sheet .solid{background:var(--signal);color:var(--concrete)}
+
+  /* ---------- bilan de fin de séance ---------- */
+  .score{margin:22px 0 2px;font-size:14px;color:var(--steel)}
+  .score b{display:block;font-size:34px;font-weight:800;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+  .bil{margin-top:16px}
+  .bil .bl{display:flex;align-items:baseline;gap:10px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
+  .bil .bn{flex:1;min-width:0}
+  .bil .bd{color:var(--steel);font-variant-numeric:tabular-nums;text-align:right}
+  .bil .bt{flex:0 0 54px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .bil .bt.ok{color:var(--signal)}
+  .note{font-size:13px;color:var(--steel);padding:12px 0 0;line-height:1.5}
 
   /* ---------- summary ---------- */
   .sum{padding:30px 20px 0}
@@ -237,7 +285,7 @@
                font:700 17px system-ui;color:var(--ink);text-align:center;font-variant-numeric:tabular-nums}
   .gline em{font-style:normal;font-size:13px;color:var(--steel);width:52px}
   .gline .del{min-height:44px;padding:0 8px;font-size:13px;color:var(--steel);text-decoration:underline;text-underline-offset:3px}
-  .gline .add{padding:13px 14px;border-radius:10px;background:var(--concrete-2);color:var(--ink);font-size:14px;font-weight:600}
+  .gline .add{min-height:44px;padding:13px 14px;border-radius:10px;background:var(--concrete-2);color:var(--ink);font-size:14px;font-weight:600}
   .back{padding:22px 20px 0;font-size:13px;color:var(--steel)}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
@@ -253,7 +301,7 @@
    => 20 / 30 / 35 / 45 kg (chargement symétrique obligatoire)
    Haltères : 1 à 8 kg par haltère
    ========================================================= */
-const DEFAULT_GEAR = {bar:20, plates:[{w:5,n:1},{w:7.5,n:1}], dbBar:2, dbMax:8, dbStep:2};
+const DEFAULT_GEAR = {bar:20, plates:[{w:5,n:1},{w:7.5,n:1}], dbBar:2, dbMax:16, dbStep:2};
 let BAR=[], BAR_HINT={}, DB=[];
 
 /* toutes les charges atteignables en chargeant la barre symétriquement */
@@ -288,14 +336,17 @@ const PROGRAM = [
      cues:["Omoplates serrées et bloquées dans le banc tout le long.","Descente en 2 s jusqu'au bas des pecs, remontée franche.","Pieds au sol, fesses en contact : pas de pont.","Sans pareur : garde 2 répétitions en réserve."]},
     {n:"Développé incliné haltères", type:"reps", sets:3, reps:10, rest:75, load:"db", def:9,
      cues:["Banc à 30–40°, pas plus, sinon ça devient une épaule.","Coudes à 45° du buste, poignets au-dessus des coudes.","Ne cogne pas les haltères en haut : garde la tension."]},
-    {n:"Pompes sur poignées", type:"reps", sets:3, reps:12, rest:60, load:"bw",
+    {n:"Pompes sur poignées", type:"reps", sets:3, reps:12, rest:60, load:"bw", part:0.66,
      cues:["Descends plus bas que le sol, c'est tout l'intérêt des poignées.","Corps gainé en planche, bassin ni creusé ni levé.","Vise l'échec technique, pas l'échec total."]},
     {n:"Élévations latérales", type:"reps", sets:3, reps:12, rest:45, load:"db", def:4,
      cues:["Léger penché avant, coudes très légèrement fléchis.","Monte jusqu'à l'horizontale, pas plus haut.","Descente contrôlée en 2 s : c'est là que ça travaille."]},
-    {n:"Dips sur banc", type:"reps", sets:3, reps:12, rest:45, load:"bw",
+    {n:"Dips sur banc", type:"reps", sets:3, reps:12, rest:45, load:"bw", part:0.4,
      cues:["Mains au bord du banc, doigts vers l'avant.","Descends jusqu'à 90° au coude, pas en dessous.","Pour durcir : talons posés loin, jambes tendues."]},
-    {n:"Extension triceps élastique", type:"reps", sets:2, reps:15, rest:45, load:"band",
-     cues:["Pied arrière sur l'élastique, en fente : c'est ton pied qui fait l'ancrage, rien à accrocher.","L'élastique remonte derrière le dos, les deux mains le tiennent derrière la nuque.","Coudes fixes, serrés et pointés vers l'avant : seuls les avant-bras montent.","Bloque 1 s bras tendus, redescends lentement. Recule le pied pour durcir."]},
+    /* L'élastique demandait 1,50 m sous tension entre le pied et la nuque : une
+       boucle courte n'y arrive pas. L'haltère fait le même geste, se charge, et
+       entre donc dans la progression au lieu d'être un exercice muet. */
+    {n:"Extension triceps haltère", type:"reps", sets:2, reps:12, rest:60, load:"db", def:10, uni:true,
+     cues:["Un seul haltère, tenu à deux mains par le disque du haut, bras tendus au-dessus de la tête.","Coudes serrés et pointés vers le plafond : ils ne bougent pas de la série.","Descends l'haltère derrière la nuque jusqu'à l'étirement, remonte sans à-coup.","Debout ou assis, dos droit, côtes basses : ne cambre pas pour aller plus bas."]},
     {n:"Roue abdominale", type:"reps", sets:3, reps:8, rest:45, load:"bw",
      cues:["À genoux sur le tapis, bassin rétroversé.","Va seulement aussi loin que tu peux garder le dos plat.","Si le bas du dos se creuse, tu es allé trop loin."]},
     {n:"Étirements", type:"time", sets:1, dur:120, rest:0, load:"none",
@@ -315,7 +366,7 @@ const PROGRAM = [
     {n:"Pullover haltère", type:"reps", sets:3, reps:12, rest:60, load:"db", def:10,
      cues:["Allongé sur le banc plat, un haltère tenu à deux mains.","Descends derrière la tête bras quasi tendus, jusqu'à l'étirement.","Côtes basses : ne cambre pas pour aller plus loin."]},
     {n:"Tirage visage élastique", type:"reps", sets:3, reps:15, rest:45, load:"band",
-     cues:["Les deux pieds sur l'élastique, une extrémité dans chaque main : tes pieds font l'ancrage.","Buste penché à 45°, dos plat, comme au rowing.","Tire vers le front, coudes hauts et écartés.","Bloque 1 s omoplates serrées. Écarte les pieds pour durcir."]},
+     cues:["Assis au sol, jambes tendues, la boucle passée autour des deux pieds.","Une portion de boucle dans chaque main, bras tendus devant : buste droit, dos plat.","Tire vers le front, coudes hauts et écartés, pas vers le ventre.","Bloque 1 s omoplates serrées. Raccourcis la prise pour durcir."]},
     {n:"Curl biceps haltères", type:"reps", sets:3, reps:12, rest:45, load:"db", def:8,
      cues:["Coudes collés au buste, pas d'élan de hanches.","Descente en 3 s, contrôle total.","Alterne bras par bras si la charge devient limite."]},
     {n:"Gainage planche", type:"time", sets:3, dur:40, rest:45, load:"bw",
@@ -404,12 +455,23 @@ const barreFace=(a,b)=>`<g><path class="mat" style="stroke-width:1.8" d="M${a[0]
  <rect class="matf" x="${a[0]-1.3}" y="${a[1]-4.5}" width="2.6" height="9" rx="1"/>
  <rect class="matf" x="${b[0]-1.3}" y="${b[1]-4.5}" width="2.6" height="9" rx="1"/></g>`;
 const halt=(x,y)=>`<g class="matf"><rect x="${x-3.2}" y="${y-1}" width="6.4" height="2" rx=".8"/><rect x="${x-5}" y="${y-3}" width="2.4" height="6" rx="1"/><rect x="${x+2.6}" y="${y-3}" width="2.4" height="6" rx="1"/></g>`;
+/* haltère tenu debout : un seul haltère saisi à deux mains par le disque du
+   haut, son axe est vertical — de profil il se voit donc dressé, pas couché. */
+const haltDebout=(x,y)=>`<g class="matf"><rect x="${x-1}" y="${y-3.2}" width="2" height="6.4" rx=".8"/><rect x="${x-3}" y="${y-5.4}" width="6" height="2.4" rx="1"/><rect x="${x-3}" y="${y+3}" width="6" height="2.4" rx="1"/></g>`;
 /* haltère vu par la tranche (bras tendu vers l'observateur) */
 const haltTranche=(x,y)=>`<g><circle class="matf" cx="${x}" cy="${y}" r="4.4"/><circle cx="${x}" cy="${y}" r="1.5" style="fill:var(--surface)"/></g>`;
 const banc=(x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,Lg=Math.hypot(dx,dy)||1,nx=-dy/Lg*1.4,ny=dx/Lg*1.4;
   return `<g class="banc"><path d="M${x1+nx} ${y1+ny} L${x2+nx} ${y2+ny} L${x2-nx} ${y2-ny} L${x1-nx} ${y1-ny} Z"/>
    <rect x="${x1+4}" y="${y1}" width="2.2" height="${72-y1}" rx=".8"/><rect x="${x2-6}" y="${y2}" width="2.2" height="${72-y2}" rx=".8"/></g>`;};
 const marche=(x,y,w=32)=>`<g class="banc"><rect x="${x}" y="${y}" width="${w}" height="${72-y}" rx="1"/></g>`;
+/* Banc vu par le BOUT. Même règle que la barre : quand on est assis ou appuyé
+   EN TRAVERS du banc — dips, hip thrust — sa longueur part vers l'observateur et
+   il ne s'en voit, de profil, que la largeur d'assise. Le dessiner en planche
+   laisserait croire qu'on est allongé dessus, dans l'axe. */
+const bancTranche=(cx,yTop,w=12)=>`<g class="banc">
+  <rect x="${cx-w/2}" y="${yTop}" width="${w}" height="3.4" rx="1.2"/>
+  <rect x="${cx-1.4}" y="${yTop+3.2}" width="2.8" height="${72-yTop-3.2}" rx=".9"/>
+  <rect x="${cx-w/2+0.8}" y="70.2" width="${w-1.6}" height="2" rx=".8"/></g>`;
 const bande=(a,b)=>`<path class="band" d="M${a[0]} ${a[1]} Q ${(a[0]+b[0])/2} ${(a[1]+b[1])/2-8} ${b[0]} ${b[1]}"/>`;
 const axe=(a,b,c,d,t,tx,ty)=>`<path class="axe" d="M${a} ${b} L${c} ${d}"/><text class="axeT" x="${tx}" y="${ty}">${t}</text>`;
 const roue=(x,y)=>`<g><circle class="matf" cx="${x}" cy="${y}" r="6"/><circle cx="${x}" cy="${y}" r="2" style="fill:var(--surface)"/></g>`;
@@ -453,19 +515,22 @@ const FIG={
   halt(30,36)+halt(90,36)},
 
 "Dips sur banc":{v:"profil", d:
-  banc(16,50,54,50)+
-  jambe([58,54],[78,58],[98,69],true)+
-  bras([45,42],[40,47],[39,50],true)+tronc([45,42],[58,54])+
-  cou([46,37],[45,42])+tete([46,33],10)+bras([45,42],[41,47],[40,50],false,true)+
-  jambe([58,54],[80,59],[100,70])},
+  /* Assis EN TRAVERS du banc : il se voit par le bout. Buste vertical devant
+     l'assise, bassin descendu sous le niveau des mains — c'est ce qui distingue
+     un dip d'une planche inversée. */
+  bancTranche(30,48,12)+
+  jambe([48,68],[66,58],[70,72],true)+
+  bras([44,53],[36,57],[35,48],true)+tronc([44,53],[48,68])+
+  cou([44,49.5],[44,53])+tete([44,46])+bras([44,53],[37,58],[36,48],false,true)+
+  jambe([48,68],[68,59],[72,72])},
 
-"Extension triceps élastique":{v:"profil", d:
-  /* l'ancrage est le pied arrière : l'élastique remonte derrière le dos jusqu'aux
-     mains, coudes hauts et fixes. Rien à accrocher dans la pièce. */
-  `<path class="band" d="M68 71 Q 74 44 57 23"/>`+
-  jambe([58,45],[64,57],[68,71],true)+tronc([58,27],[58,45])+
-  bras([58,27],[61,16],[54,21],true)+cou([58,22],[58,26])+tete([55,19],6)+
-  jambe([58,45],[54,58],[52,71])+bras([58,27],[62,16],[55,22],false,true)},
+"Extension triceps haltère":{v:"profil", d:
+  /* Coudes au plafond, immobiles ; seuls les avant-bras descendent derrière la
+     nuque. L'haltère est dressé : c'est le disque du haut qu'on tient. */
+  jambe([56,47],[56,58],[56,71],true)+
+  bras([56,32],[62,19],[53,12],true)+tronc([56,32],[56,47])+
+  cou([53.5,28],[56,32])+tete([53,25])+bras([56,32],[63,19],[54,13],false,true)+
+  jambe([56,47],[57,58],[57,71])+haltDebout(51,10)},
 
 "Roue abdominale":{v:"profil", d:
   roue(28,65)+
@@ -500,13 +565,14 @@ const FIG={
   haltTranche(99,31)},
 
 "Tirage visage élastique":{v:"profil", d:
-  /* ancré sous les deux pieds, buste penché à 45° : la traction redevient
-     horizontale par rapport au tronc, sans rien fixer au mur. */
-  `<path class="band" d="M74 70 Q 60 52 49 28"/>`+
-  jambe([74,45],[77,58],[75,71],true)+jambe([74,45],[75,58],[73,71])+
-  tronc([50,32],[74,45])+bras([50,32],[60,29],[49,26],true)+
-  cou([45,28],[50,32])+tete([42,25],26)+bras([50,32],[61,29],[50,27],false,true)+
-  axe(48,32,74,45,"45°",64,34)+`<path class="axe" d="M74 45 L74 30"/>`},
+  /* Assis au sol, jambes tendues, la boucle autour des deux pieds : l'ancrage
+     est le pied, la traction arrive à hauteur de visage, et le trajet demandé
+     tient dans une boucle courte. */
+  `<path class="band" d="M80 70 Q 58 56 34 40"/>`+
+  jambe([34,67],[58,69],[80,70],true)+
+  bras([30,45],[20,44],[34,40],true)+tronc([30,45],[34,67])+
+  cou([29,40],[30,45])+tete([29,37])+bras([30,45],[21,45],[35,41],false,true)+
+  jambe([34,67],[58,70],[80,71])},
 
 "Curl biceps haltères":{v:"profil", d:
   jambe([58,46],[55,58],[55,71],true)+jambe([58,46],[61,58],[61,71])+
@@ -534,7 +600,7 @@ const FIG={
   halt(44,48)+halt(64,48)+axe(51,58,51,71,"90°",36,62)+`<path class="axe" d="M51 58 L56 47"/>`},
 
 "Hip thrust":{v:"profil", d:
-  banc(10,42,48,42)+
+  bancTranche(36,42,12)+
   jambe([70,44],[86,56],[86,71],true)+
   tronc([36,40],[70,44])+bras([36,40],[32,46],[30,42],true)+
   cou([31,38],[36,40])+tete([27,37],78)+bras([36,40],[33,46],[31,42],false,true)+
@@ -587,7 +653,15 @@ async function load(){
   }catch(e){/* première ouverture, ou stockage refusé par le navigateur */}
   Object.keys(BLANK).forEach(k=>{ if(DATA[k]==null) DATA[k]=JSON.parse(JSON.stringify(BLANK[k])); });
   if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
+  releverPlafondHaltere();
   buildLoads();
+}
+/* Les disques sont libres : un haltère monte à 18 kg, pas à 10. L'ancien
+   plafond venait du réglage livré par défaut, jamais touché — on ne le relève
+   donc que s'il est resté tel quel, pour ne pas écraser un réglage voulu. */
+function releverPlafondHaltere(){
+  const g=DATA.gear;
+  if(g && g.dbBar===2 && g.dbStep===2 && g.dbMax===8) g.dbMax=16;
 }
 function localSave(){
   try{ localStorage.setItem(KEY,JSON.stringify(DATA)); }
@@ -823,6 +897,7 @@ function importData(file){
       if(!d.history) throw 0;
       DATA=Object.assign(JSON.parse(JSON.stringify(BLANK)),d);
       if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
+      releverPlafondHaltere();
       buildLoads(); save(); render(); toast("Données importées");
     }catch(e){ toast("Fichier illisible : choisis un export de cette app"); }
   };
@@ -937,6 +1012,48 @@ function raiseLevel(pid){
   save();
   return n;
 }
+/* « Trop dur » est le miroir de « Trop facile », à une autre portée — et ce
+   n'est pas une étourderie. Une séance se juge trop facile à la fin, dans son
+   ensemble ; un exercice se révèle trop lourd tout de suite, celui-là et pas
+   les autres. On descend donc un seul exercice, d'un seul cran, en défaisant la
+   montée dans l'ordre inverse : les répétitions gagnées d'abord, la charge
+   ensuite, et la récupération rognée en dernier recours. Le réglage s'inscrit
+   dans les données : la prochaine séance repart de là. */
+const repsFloor=e=>Math.max(3,(e.reps||0)-3);
+const durFloor=e=>Math.max(15,Math.round((e.dur||0)*0.5));
+
+function lowerEx(pid,e){
+  if(e.load==="none") return null;
+  const k=wKey(pid,e);
+  if(e.type==="time"){
+    const d=getD(pid,e);
+    if(d>durFloor(e)){ DATA.dur[k]=Math.max(durFloor(e),d-5); return "durée ramenée à "+DATA.dur[k]+" s"; }
+    return rendreRecup(pid,e);
+  }
+  const r=getR(pid,e);
+  if(r>(e.reps||0)){ DATA.reps[k]=e.reps; return "répétitions ramenées à "+e.reps; }
+  if(e.load==="bar"||e.load==="db"){
+    const list=e.load==="bar"?BAR:DB, w=getW(pid,e), i=nearest(list,w);
+    const leger=i>0?list[i-1]:null;
+    const bas=()=>{ DATA.weights[k]=leger; return "charge ramenée à "+fmt(leger)+" kg"; };
+    /* Avec un inventaire court, le cran de charge peut retirer un tiers du
+       poids d'un coup : passé 15 %, on enlève d'abord une répétition, qui se
+       dose. C'est toujours un cran, mais le bon. */
+    if(leger!=null&&(w-leger)/w<=0.15) return bas();
+    if(r>repsFloor(e)){ DATA.reps[k]=r-1; return "répétitions ramenées à "+(r-1); }
+    if(leger!=null) return bas();
+    return rendreRecup(pid,e);
+  }
+  if(r>repsFloor(e)){ DATA.reps[k]=r-1; return "répétitions ramenées à "+(r-1); }
+  return rendreRecup(pid,e);
+}
+/* Dernier recours : rendre la récupération que les niveaux avaient rognée. */
+function rendreRecup(pid,e){
+  const k=wKey(pid,e), cur=getRest(pid,e);
+  if(e.rest>0&&cur<e.rest){ DATA.rest[k]=Math.min(e.rest,cur+10); return "récupération rendue à "+DATA.rest[k]+" s"; }
+  return null;
+}
+
 const levelOf=pid=>(DATA.level||{})[pid]||0;
 const lastOf=pid=>DATA.history.filter(h=>h.id===pid)[0]||null;
 
@@ -950,38 +1067,98 @@ function deleteSession(d){
 /* =========================================================
    3. SON, VIBRATION, VEILLE
    ========================================================= */
-let ac=null, wake=null;
+let ac=null, wake=null, alarme=null;
 function audioOn(){
   try{
     if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)();
     if(ac.state==="suspended") ac.resume();
   }catch(e){}
 }
-function beep(n){
+/* Fin de minuteur. Une sinusoïde est la forme d'onde qui porte le moins à
+   volume égal : le téléphone posé au sol, à trois mètres, on ne l'entendait
+   pas. Onde carrée doublée d'une octave, motif qui monte en fin de course, et
+   surtout une répétition jusqu'à ce qu'on touche l'écran — plafonnée, pour ne
+   pas sonner dans le vide si on a quitté la pièce. */
+const MOTIF=[784,784,988,988,1175,1568];
+const ALARME_CYCLES=3, ALARME_PAUSE=3200;
+function sonnerie(){
   audioOn(); if(!ac) return;
-  const t0=ac.currentTime;
-  for(let i=0;i<n;i++){
-    const o=ac.createOscillator(), g=ac.createGain();
-    o.connect(g); g.connect(ac.destination);
-    o.type="sine"; o.frequency.value = i===n-1?1046:784;
-    const t=t0+i*0.28;
+  const t0=ac.currentTime+0.02;
+  MOTIF.forEach((f,i)=>{
+    const fin=i===MOTIF.length-1, t=t0+i*0.34, dur=fin?0.6:0.34;
+    const g=ac.createGain(); g.connect(ac.destination);
     g.gain.setValueAtTime(0,t);
-    g.gain.linearRampToValueAtTime(0.35,t+0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);
-    o.start(t); o.stop(t+0.26);
-  }
-  if(navigator.vibrate) navigator.vibrate([250,120,250,120,450]);
+    g.gain.linearRampToValueAtTime(fin?0.5:0.38,t+0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur-0.02);
+    [["square",f,1],["sine",f*2,0.35]].forEach(([type,freq,part])=>{
+      const o=ac.createOscillator(), gg=ac.createGain();
+      o.type=type; o.frequency.value=freq; gg.gain.value=part;
+      o.connect(gg); gg.connect(g);
+      o.start(t); o.stop(t+dur);
+    });
+  });
+  if(navigator.vibrate) navigator.vibrate([320,130,320,130,320,130,700]);
 }
+function alarmeDemarre(){
+  alarmeArrete();
+  let n=1; sonnerie();
+  alarme=setInterval(()=>{ sonnerie(); if(++n>=ALARME_CYCLES) alarmeArrete(); },ALARME_PAUSE);
+}
+function alarmeArrete(){
+  if(alarme){ clearInterval(alarme); alarme=null; }
+  if(navigator.vibrate) navigator.vibrate(0);
+}
+/* Le téléphone relâche le verrou de lui-même dès que l'app passe en arrière-plan
+   ou que l'écran s'éteint une fois. Le sentinel reste alors en main mais ne vaut
+   plus rien : sans le test `released`, on croyait tenir le verrou et l'écran
+   s'éteignait pour tout le reste de la séance. */
 async function keepAwake(on){
   try{
-    if(on&&!wake&&navigator.wakeLock) wake=await navigator.wakeLock.request("screen");
-    if(!on&&wake){ wake.release(); wake=null; }
-  }catch(e){}
+    if(on&&(!wake||wake.released)&&navigator.wakeLock){
+      wake=await navigator.wakeLock.request("screen");
+      wake.addEventListener("release",()=>{ wake=null; });
+    }
+    if(!on&&wake){ const w=wake; wake=null; w.release(); }
+  }catch(e){ wake=null; }
 }
 
 /* =========================================================
    4. TIMER
    ========================================================= */
+/* La feuille se pose par-dessus la page. Sans réserve à sa hauteur, le bas de
+   l'écran d'exercice — consignes, lien vidéo, molettes — passe dessous et aucun
+   défilement ne le ramène : c'est la hauteur réelle qu'il faut mesurer, pas une
+   valeur écrite en dur, puisque la feuille se replie. */
+function reserverSousLaFeuille(){
+  if(!appEl) return;
+  const h=sheet.classList.contains("hidden")?0:sheet.offsetHeight;
+  /* Le pied de séance est fixé au bas de l'écran, comme la feuille, et passait
+     dessous : pendant une récupération, « Série validée », « Trop dur » et
+     « Arrêter » étaient hors d'atteinte. Il se pose maintenant SUR la feuille. */
+  const pied=view.querySelector(".foot");
+  if(pied) pied.style.bottom = h ? h+"px" : "";
+  appEl.style.paddingBottom = h ? (h+(pied?pied.offsetHeight:0)+24)+"px" : "";
+}
+/* Repli retenu d'une récup à l'autre, et même après un rafraîchissement : c'est
+   une préférence d'affichage, elle vit à part de l'état de séance et ne passe
+   donc ni par `merge()` ni par le serveur. */
+const MINI_KEY="workout:mini";
+let reduit=false;
+try{ reduit=localStorage.getItem(MINI_KEY)==="1"; }catch(e){}
+function appliquerReduction(){
+  sheet.classList.toggle("mini",reduit);
+  const b=el("t-reduce");
+  if(b){
+    b.setAttribute("aria-expanded",reduit?"false":"true");
+    b.setAttribute("aria-label",reduit?"Agrandir le minuteur":"Réduire le minuteur");
+  }
+  requestAnimationFrame(reserverSousLaFeuille);
+}
+function basculerReduction(){
+  reduit=!reduit;
+  try{ localStorage.setItem(MINI_KEY,reduit?"1":"0"); }catch(e){}
+  appliquerReduction();
+}
 const Timer={
   total:0,end:0,left:0,running:false,int:null,done:null,fired:false,
   start(sec,label,onDone){
@@ -990,6 +1167,7 @@ const Timer={
     el("t-label").textContent=label;
     peindreEnsuite();
     sheet.classList.remove("hidden","alarm");
+    appliquerReduction();
     el("t-toggle").textContent="Pause";
     el("t-skip").textContent = label==="Récupération" ? "Passer la récup" : "Terminer";
     this.paint(); clearInterval(this.int);
@@ -1003,7 +1181,7 @@ const Timer={
   },
   ring(){
     this.running=false; clearInterval(this.int);
-    beep(3); sheet.classList.add("alarm");
+    alarmeDemarre(); sheet.classList.add("alarm");
     el("t-label").textContent="Temps écoulé";
     el("t-skip").textContent="Continuer";
   },
@@ -1018,21 +1196,23 @@ const Timer={
     else { this.running=true; this.end=Date.now()+this.left*1000; el("t-toggle").textContent="Pause"; }
   },
   add(d){
-    if(this.fired){ this.fired=false; sheet.classList.remove("alarm"); el("t-label").textContent="Récupération"; el("t-skip").textContent="Passer la récup"; this.running=true; }
+    if(this.fired){ alarmeArrete(); this.fired=false; sheet.classList.remove("alarm"); el("t-label").textContent="Récupération"; el("t-skip").textContent="Passer la récup"; this.running=true; }
     this.left=Math.max(0,this.left+d); this.total=Math.max(this.total,this.left);
     if(this.running) this.end=Date.now()+this.left*1000;
     this.paint();
   },
   stop(){
-    this.running=false; clearInterval(this.int);
+    this.running=false; clearInterval(this.int); alarmeArrete();
     sheet.classList.add("hidden"); sheet.classList.remove("alarm");
+    reserverSousLaFeuille();
     const cb=this.done; this.done=null; if(cb) cb();
   },
   /* referme le minuteur sans exécuter sa suite : pour quitter ou sauter un
      exercice pendant une récupération, sans faire avancer la séance au passage */
   cancel(){
-    this.running=false; clearInterval(this.int); this.done=null;
+    this.running=false; clearInterval(this.int); alarmeArrete(); this.done=null;
     sheet.classList.add("hidden"); sheet.classList.remove("alarm");
+    reserverSousLaFeuille();
   }
 };
 
@@ -1049,8 +1229,9 @@ const REPRISE=12*3600*1000;   // au-delà, la séance est tenue pour abandonnée
 
 function saveCur(){
   if(!S) return;
-  DATA.cur={idx:S.idx, i:S.i, set:S.set, log:S.log, w:S.w, reps:S.reps,
-            ecoule:Date.now()-S.t0, at:Date.now(),
+  DATA.cur={idx:S.idx, i:S.i, set:S.set, log:S.log, events:S.events,
+            w:S.w, reps:S.reps, dur:S.dur, plan:S.plan,
+            ecoule:Date.now()-S.t0, at:Date.now(), reposT0:S.reposT0||0,
             recup:(Timer.running&&!Timer.fired)?Timer.end:0};
   localSave();
 }
@@ -1065,18 +1246,25 @@ function reprendre(){
     DATA.cur=null; return false;
   }
   S={idx:c.idx, p, i:Math.min(c.i||0,p.ex.length-1), set:Math.max(1,c.set||1),
-     log:c.log||[], w:c.w, reps:c.reps, t0:Date.now()-(c.ecoule||0)};
+     log:c.log||[], events:c.events||[], w:c.w, reps:c.reps,
+     dur:c.dur||p.ex.map(e=>getD(p.id,e)),
+     plan:c.plan||p.ex.map(e=>({w:getW(p.id,e), r:getR(p.id,e), d:getD(p.id,e), rest:getRest(p.id,e)})),
+     reposT0:c.reposT0||0, t0:Date.now()-(c.ecoule||0)};
   keepAwake(true);
   const reste=(c.recup||0)-Date.now();
-  if(reste>1000) Timer.start(reste/1000,"Récupération",render);
+  if(reste>1000) Timer.start(reste/1000,"Récupération",()=>{ noterRepos(); render(); });
   return true;
 }
 
 function startSession(idx){
   audioOn(); keepAwake(true);
   const p=PROGRAM[idx];
-  S={idx, p, i:0, set:1, log:[], t0:Date.now(),
-     w:p.ex.map(e=>getW(p.id,e)), reps:p.ex.map(e=>getR(p.id,e))};
+  /* `plan` fige l'objectif au moment où la séance commence : c'est lui, et non
+     les réglages courants, qui sert de référence au récapitulatif. Les relire
+     plus tard donnerait une comparaison qui bouge à chaque montée de niveau. */
+  S={idx, p, i:0, set:1, log:[], events:[], t0:Date.now(),
+     w:p.ex.map(e=>getW(p.id,e)), reps:p.ex.map(e=>getR(p.id,e)), dur:p.ex.map(e=>getD(p.id,e)),
+     plan:p.ex.map(e=>({w:getW(p.id,e), r:getR(p.id,e), d:getD(p.id,e), rest:getRest(p.id,e)}))};
   render();
 }
 
@@ -1086,15 +1274,32 @@ function curEx(){ return S.p.ex[S.i]; }
    récupération ne fait que s'afficher par-dessus : sa fin ne rejoue pas
    l'avancement — c'est ce doublon qui faisait sauter une série sur deux. */
 function validateSet(){
-  const e=curEx();
-  if(e.type==="reps"&&e.load!=="none"){
-    S.log.push({n:e.n, w:S.w[S.i], r:S.reps[S.i], load:e.load, side:!!e.side});
-  }
+  const e=curEx(), i=S.i, pl=S.plan[i]||{};
+  /* Toutes les séries sont inscrites, y compris l'échauffement et les exercices
+     au temps : sans elles l'historique ne dit pas ce qui a été fait. Chacune
+     porte le prévu ET le réalisé — c'est l'écart qui se lit ensuite, et il ne
+     se reconstitue pas après coup. */
+  S.log.push({
+    n:e.n, t:e.type, load:e.load, side:!!e.side, uni:!!e.uni, part:e.part||0, set:S.set,
+    w:S.w[i], r:S.reps[i],
+    d:e.type==="time" ? Math.max(1,Math.round((Date.now()-(S.travailT0||Date.now()))/1000)) : null,
+    pw:pl.w, pr:pl.r, pd:pl.d, prest:pl.rest, rest:null
+  });
+  S.travailT0=null;
   advance();
   if(S.i>=S.p.ex.length) return finish();   // dernier exercice : on termine ici
   const rest=getRest(S.p.id,e);
-  if(rest>0) Timer.start(rest,"Récupération",render);
+  if(rest>0){ S.reposT0=Date.now(); Timer.start(rest,"Récupération",()=>{ noterRepos(); render(); }); }
   render();
+}
+/* La récupération réellement prise appartient à la série qui la précède : elle
+   n'est connue qu'à la fin du décompte, qu'il soit allé au bout, prolongé ou
+   passé. Sans ça, « récup raccourcie » resterait un ressenti sans trace. */
+function noterRepos(){
+  if(!S||!S.reposT0) return;
+  const d=S.log[S.log.length-1];
+  if(d) d.rest=Math.max(0,Math.round((Date.now()-S.reposT0)/1000));
+  S.reposT0=null;
 }
 function advance(){
   const e=curEx();
@@ -1120,7 +1325,8 @@ function peindreEnsuite(){
 
 function startWork(){
   const e=curEx();
-  Timer.start(getD(S.p.id,e), e.n, validateSet);
+  S.travailT0=Date.now();
+  Timer.start(S.dur[S.i], e.n, validateSet);
 }
 
 /* Séance trop facile : un cran de plus, tout de suite. Les séries déjà
@@ -1132,35 +1338,186 @@ function harder(){
   const pid=S?S.p.id:null; if(!pid) return;
   const n=raiseLevel(pid);
   if(!n) return render();
-  S.p.ex.forEach((e,i)=>{ S.w[i]=getW(pid,e); S.reps[i]=getR(pid,e); });
+  S.p.ex.forEach((e,i)=>{ S.w[i]=getW(pid,e); S.reps[i]=getR(pid,e); S.dur[i]=getD(pid,e); });
+  S.events.push({at:Date.now(), t:"facile", i:S.i, n:curEx().n, quoi:"niveau "+n});
   toast("Niveau "+n+" : la suite de la séance est relevée");
   render();
 }
 
+/* Trop lourd ou trop long, maintenant : on descend l'exercice en cours et lui
+   seul. L'effet est immédiat sur les séries restantes, et il est retenu — c'est
+   un aveu utile, pas une faveur ponctuelle. Le récapitulatif le sait : un
+   objectif abaissé exprès ne se compte pas comme un manque. */
+function plusDur(){
+  if(!S) return;
+  const e=curEx(), quoi=lowerEx(S.p.id,e);
+  if(!quoi) return toast("Cet exercice est déjà au plus bas");
+  S.w[S.i]=getW(S.p.id,e); S.reps[S.i]=getR(S.p.id,e); S.dur[S.i]=getD(S.p.id,e);
+  S.events.push({at:Date.now(), t:"dur", i:S.i, n:e.n, quoi});
+  save();
+  toast(e.n+" : "+quoi);
+  render();
+}
+
 async function finish(){
-  keepAwake(false);
+  keepAwake(false); noterRepos();
   const mins=Math.max(1,Math.round((Date.now()-S.t0)/60000));
-  let vol=0, sets=0;
-  S.log.forEach(l=>{
-    sets++;
-    const per = l.load==="bar" ? l.w : l.w*2;
-    vol += per*l.r*(l.side?2:1);
-  });
-  DATA.history.unshift({d:Date.now(), id:S.p.id, name:S.p.name, mins, vol:Math.round(vol), sets, lvl:levelOf(S.p.id), log:S.log});
+  /* « kg soulevés » reste la charge EXTERNE, barre et haltères : c'est le
+     chiffre comparable avec les séances passées. La part du poids du corps se
+     compte à part, dans `volumeCorps()`. */
+  const vol=volumeExterne(S.log);
+  const sets=S.log.filter(l=>l.load!=="none").length;
+  const entree={d:Date.now(), id:S.p.id, name:S.p.name, mins, vol, sets,
+                lvl:levelOf(S.p.id), log:S.log, events:S.events};
+  DATA.history.unshift(entree);
   DATA.history=DATA.history.slice(0,60);
   S.p.ex.forEach((e,i)=>{ if(e.load==="bar"||e.load==="db") DATA.weights[wKey(S.p.id,e)]=S.w[i]; });
   DATA.nextIdx=(S.idx+1)%PROGRAM.length;
   DATA.cur=null;
   await save();
-  const done={mins,vol:Math.round(vol),sets,name:S.p.name,id:S.p.id,log:S.log};
-  S=null; renderDone(done);
+  S=null; renderDone(entree);
+}
+
+/* Progression d'un exercice d'une séance à l'autre. Une séance ne se compare
+   qu'aux séances du même type : l'axe des colonnes est donc la suite des dates
+   où CETTE séance a été faite, pas le calendrier.
+   Chaque case porte ce qui se lit (répétitions, charge, durée) et, à part, un
+   seul nombre comparable pour l'écart — le volume quand il y a une charge, le
+   total de répétitions au poids du corps, les secondes sur un gainage. Mélanger
+   les trois dans un même chiffre ne voudrait rien dire. */
+const MAX_COL=4;   // au-delà, la table déborde sur un téléphone
+
+function resumeEx(log,e){
+  const series=(log||[]).filter(l=>l.n===e.n);
+  if(!series.length) return null;
+  if(e.type==="time"){
+    const sec=series.reduce((a,l)=>a+(l.d!=null?l.d:(l.pd||e.dur||0)),0);
+    return {val:sec, txt:series.length+"×"+Math.round(sec/series.length)+" s"};
+  }
+  const reps=series.reduce((a,l)=>a+(l.r||0)*(l.side?2:1),0);
+  const w=series.reduce((a,l)=>Math.max(a,l.w||0),0);
+  if(w>0) return {val:Math.round(w*reps), txt:series.length+"×"+(series[0].r||0)+"×"+fmt(w)+" kg"};
+  return {val:reps, txt:series.length+"×"+(series[0].r||0)+" rép."};
+}
+
+function progression(){
+  return PROGRAM.map(p=>{
+    const seances=DATA.history.filter(h=>h.id===p.id).slice(0,MAX_COL);   // déjà du plus récent au plus ancien
+    if(!seances.length) return null;
+    const lignes=p.ex.filter(e=>e.load!=="none").map(e=>{
+      const cases=seances.map(h=>resumeEx(h.log,e));
+      const der=cases[0], prec=cases.slice(1).find(c=>c&&c.val);
+      return {n:e.n, cases,
+              ecart: der&&prec&&prec.val ? der.val/prec.val-1 : null};
+    }).filter(l=>l.cases.some(c=>c));
+    return lignes.length?{id:p.id, nom:p.name, dates:seances.map(h=>h.d), lignes}:null;
+  }).filter(Boolean);
+}
+
+/* Réalisé contre prévu, exercice par exercice. La référence est l'objectif figé
+   au DÉBUT de la séance et recopié dans chaque ligne du journal — pas les
+   réglages d'aujourd'hui, qui donneraient une comparaison changeant à chaque
+   montée de niveau.
+   Les séances enregistrées avant que le prévu ne soit inscrit n'ont pas de
+   référence : on reconstitue alors l'objectif à partir de la première série, et
+   on ne compte que les exercices dont il reste une trace — plutôt que de faire
+   passer pour un échec ce qui n'a simplement jamais été noté. */
+function bilan(h){
+  const p=PROGRAM.find(q=>q.id===h.id); if(!p||!h.log) return null;
+  const complet=(h.log||[]).some(l=>l.t);
+  const ajuste={};
+  (h.events||[]).forEach(ev=>{ if(ev.t==="dur") ajuste[ev.n]=true; });
+  const un=v=>v>0?v:1;
+  const lignes=p.ex.filter(e=>e.load!=="none").map(e=>{
+    const series=(h.log||[]).filter(l=>l.n===e.n), ref=series[0]||{};
+    let fait=0, prevu=0, detail=[];
+    if(e.type==="time"){
+      const pd=ref.pd!=null?ref.pd:(e.dur||0);
+      prevu=e.sets*pd;
+      series.forEach(l=>{ const d=l.d!=null?l.d:pd; fait+=d; detail.push(d+" s"); });
+    }else{
+      const pr=ref.pr!=null?ref.pr:(e.reps||0);
+      const pw=ref.pw!=null?ref.pw:(ref.w!=null?ref.w:0);
+      prevu=e.sets*pr*un(pw);
+      series.forEach(l=>{ const w=l.w!=null?l.w:pw; fait+=(l.r||0)*un(w);
+        detail.push(w>0?`${l.r}×${fmt(w)} kg`:`${l.r}`); });
+    }
+    return {n:e.n, t:e.type, faites:series.length, sets:e.sets, prevu, detail,
+            taux:prevu?fait/prevu:null, ajuste:!!ajuste[e.n],
+            vide:!series.length};
+  });
+  /* Un objectif abaissé exprès en séance ne se compte pas comme un manque :
+     sinon « Trop dur » punirait celui qui s'en sert honnêtement. */
+  const comptes=lignes.filter(l=>l.taux!=null&&!l.ajuste&&(complet||!l.vide));
+  const taux=comptes.length?comptes.reduce((a,l)=>a+l.taux,0)/comptes.length:null;
+  return {lignes, taux, complet, ajustes:lignes.filter(l=>l.ajuste).length};
+}
+function motDuTaux(t){
+  if(t==null) return "";
+  if(t>=1.05) return "Au-dessus des objectifs";
+  if(t>=1)    return "Objectifs atteints";
+  if(t>=0.9)  return "Tout juste en dessous";
+  return "En dessous des objectifs";
+}
+
+/* Part du poids du corps réellement déplacée. Les pieds au sol en reprennent
+   une partie : environ un tiers aux pompes sur les mains, un peu plus de la
+   moitié aux dips sur banc, talons près du corps. Ce sont des moyennes de
+   population, pas une mesure : la longueur des segments et la position des
+   pieds les déplacent, et c'est pour ça que le chiffre est présenté comme une
+   estimation et tenu SÉPARÉ de la charge externe. Mêlés, les 1 800 kg de trois
+   séries de pompes écraseraient la barre et rendraient l'historique
+   incomparable du jour au lendemain.
+   Le coefficient est relu dans le PROGRAMME quand le journal ne le porte pas :
+   c'est ce qui rend le calcul rétroactif sur les séances déjà enregistrées. */
+function exerciceParNom(n){
+  for(const p of PROGRAM){ const e=p.ex.find(x=>x.n===n); if(e) return e; }
+  return null;
+}
+function partDe(l){
+  if(l.part!=null) return l.part;
+  const e=exerciceParNom(l.n);
+  return (e&&e.part)||0;
+}
+/* Poids du corps le plus proche AVANT la date donnée : une séance se compare au
+   corps qu'on avait ce jour-là, pas à celui d'aujourd'hui. À défaut, la première
+   mesure connue, faute de mieux — et rien du tout s'il n'y en a aucune. */
+function poidsDuJour(t){
+  const m=mesuresRetenues().filter(x=>x.kg!=null);
+  if(!m.length) return null;
+  const avant=m.filter(x=>x.d<=t);            // `mesuresRetenues` rend du plus récent au plus ancien
+  return (avant.length?avant[0]:m[m.length-1]).kg;
+}
+function volumeCorps(log,t){
+  const kg=poidsDuJour(t);
+  if(kg==null) return null;
+  let v=0, vu=false;
+  (log||[]).forEach(l=>{
+    const part=partDe(l);
+    if(!part||l.t==="time") return;           // un gainage est isométrique : des kg×répétitions n'y veulent rien dire
+    vu=true; v+=part*kg*(l.r||0)*(l.side?2:1);
+  });
+  return vu?Math.round(v):null;
+}
+
+/* Charge externe d'une séance : la barre compte une fois, les haltères deux —
+   sauf un haltère unique tenu à deux mains, qui n'en fait qu'un. Les exercices
+   au poids du corps n'y entrent pas : ils ont leur propre compte. */
+function volumeExterne(log){
+  let v=0;
+  (log||[]).forEach(l=>{
+    if(l.load!=="bar"&&l.load!=="db") return;
+    const per=(l.load==="bar"||l.uni)?l.w:l.w*2;
+    v+=per*(l.r||0)*(l.side?2:1);
+  });
+  return Math.round(v);
 }
 
 /* =========================================================
    6. RENDU
    ========================================================= */
 const el=id=>document.getElementById(id);
-const view=el("view"), sheet=el("timer-sheet");
+const view=el("view"), sheet=el("timer-sheet"), appEl=el("app");
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>String(n).replace(".",",");
 
@@ -1238,14 +1595,14 @@ function renderHome(){
     ${h.length?h.slice(0,12).map(s=>`
       <div class="swipe">
         <button class="swipe-del" data-delh="${s.d}">Supprimer</button>
-        <div class="hist">
+        <button class="hist" data-bilan="${s.d}">
           <span class="d">${jour(s.d)}</span>
           <span class="n">${s.id} · ${esc(s.name)}</span>
           ${s.lvl?`<i class="lvl">niv. ${s.lvl}</i>`:""}
           <span class="v">${s.mins} min · ${s.vol.toLocaleString("fr-FR")} kg</span>
-        </div>
+        </button>
       </div>`).join("")+
-      `<div class="empty" style="padding:14px 0 0">Balaie une ligne vers la gauche pour la supprimer.</div>`:
+      `<div class="empty" style="padding:14px 0 0">Touche une ligne pour revoir le détail de la séance, balaie-la vers la gauche pour la supprimer.</div>`:
       `<div class="empty">Rien d'enregistré pour l'instant. Finis une séance et elle apparaîtra ici, avec sa durée et le volume soulevé.</div>`}
     ${h.length?`<div class="empty" style="padding-top:16px">Total : ${h.length} séance${h.length>1?"s":""} · ${h.reduce((a,b)=>a+b.mins,0)} minutes.</div>`:""}
   </div>`;
@@ -1263,12 +1620,14 @@ function renderSession(){
   const p=S.p, e=curEx(), i=S.i;
   const isTime=e.type==="time";
   const hasLoad=e.load==="bar"||e.load==="db";
-  const gear={bar:"Barre olympique",db:"Haltères",band:"Élastique",bw:"Poids du corps",none:"Tapis"}[e.load];
+  const gear=e.uni&&e.load==="db" ? "Un haltère"
+    : {bar:"Barre olympique",db:"Haltères",band:"Élastique",bw:"Poids du corps",none:"Tapis"}[e.load];
 
   let dials="";
   if(hasLoad){
     const w=S.w[i];
-    const hint = e.load==="bar" ? (BAR_HINT[w]||"") : "par haltère, barre comprise";
+    const hint = e.load==="bar" ? (BAR_HINT[w]||"")
+      : (e.uni?"pour l'haltère, barre comprise":"par haltère, barre comprise");
     dials=`<div class="dials">
       <div class="dial">
         <div class="dl">Charge</div><div class="dv">${fmt(w)} kg</div><div class="dh">${hint}</div>
@@ -1310,6 +1669,7 @@ function renderSession(){
       : `<button class="solid" id="go">Série validée</button>`}
     <div class="under">
       <button id="prev" ${i===0&&S.set===1?"style='visibility:hidden'":""}>Revenir</button>
+      <button id="soft">Trop dur</button>
       <button id="hard">Trop facile</button>
       <button id="skip">Passer</button>
     </div>
@@ -1558,9 +1918,32 @@ function renderBody(){
     </div>
     <div class="empty" style="border:0;padding:4px 0 0">${ignorees?`${ignorees} mesure${ignorees>1?"s":""} ignorée${ignorees>1?"s":""}, conservée${ignorees>1?"s":""} mais écartée${ignorees>1?"s":""} de tous les calculs. Vide le champ pour les reprendre.`:"À régler si ta balance a changé de mode ou de profil : ce qui précède cette date n'est pas comparable, et fausserait les écarts."}</div>
     <div class="empty" style="border:0;padding-top:14px">${vues.length} mesure${vues.length>1?"s":""} sur la plage${vues.length<mes.length?`, ${mes.length} en mémoire`:""}${vues.length>14?", les 14 dernières ci-dessus":""}, une par jour — la première, celle du matin. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
+    ${blocProgression()}
   </div>
   <input type="file" id="b-file" accept=".csv,text/csv,text/plain" style="display:none">
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
+}
+
+/* La progression se lit d'une séance à l'autre du MÊME type : une table par
+   séance, les dates en colonnes du plus ancien au plus récent, et l'écart avec
+   la fois d'avant en dernière colonne. Pas de courbe ici : sur deux ou trois
+   points, une ligne donnerait à une variation l'allure d'une tendance. */
+function blocProgression(){
+  const pr=progression();
+  if(!pr.length) return `
+    <div class="section-h">Progression par exercice</div>
+    <div class="empty" style="border:0">Rien à comparer pour l'instant. La progression se lit d'une séance à l'autre du même type : il en faut deux. Elle se remplira toute seule.</div>`;
+  const corps=DATA.history.map(h=>({d:h.d, v:volumeCorps(h.log,h.d)})).filter(x=>x.v!=null);
+  return pr.map(g=>`
+    <div class="section-h">Progression · séance ${g.id}, ${esc(g.nom.toLowerCase())}</div>
+    <div class="tab-wrap"><table class="tab"><thead><tr><th>Exercice</th>
+      ${g.dates.slice().reverse().map(d=>`<th>${jour(d)}</th>`).join("")}<th>Δ</th></tr></thead>
+    <tbody>${g.lignes.map(l=>`<tr><td>${esc(l.n)}</td>
+      ${l.cases.slice().reverse().map(c=>`<td>${c?esc(c.txt):"—"}</td>`).join("")}
+      <td>${l.ecart!=null?(l.ecart>0?"+":"")+Math.round(l.ecart*100)+" %":"—"}</td>
+    </tr>`).join("")}</tbody></table></div>`).join("")
+  + `<div class="empty" style="border:0;padding-top:14px">Δ compare la dernière séance à la précédente du même type, sur un seul nombre à la fois : le volume là où il y a une charge, le total de répétitions au poids du corps, les secondes tenues sur un gainage. Une case vide est un exercice passé ou pas encore enregistré.</div>`
+  + (corps.length?`<div class="empty" style="border:0;padding-top:10px">Charge estimée du poids du corps, par séance : ${corps.slice(0,4).map(x=>`${jour(x.d)} ${x.v.toLocaleString("fr-FR")} kg`).join(" · ")}. Estimation, tenue à part des kg de barre et d'haltères.</div>`:"");
 }
 
 function renderGear(){
@@ -1631,37 +2014,55 @@ function readGear(){
 }
 
 let lastDone=null;
-function renderDone(d){
+function renderDone(d,frais=true){
   lastDone=d;
-  const lines={};
-  d.log.forEach(l=>{
-    const k=l.n; lines[k]=lines[k]||[];
-    lines[k].push(`${l.r}×${fmt(l.w)}`);
-  });
+  const b=bilan(d), corps=volumeCorps(d.log,d.d||Date.now());
+  const pct=b&&b.taux!=null?Math.round(b.taux*100):null;
   view.innerHTML=`
   <div class="sum">
-    <h2>Séance ${esc(d.name)} enregistrée.</h2>
+    <h2>${frais?`Séance ${esc(d.name)} enregistrée.`:`Séance ${esc(d.id)} du ${jour(d.d)}`}</h2>
     <div class="grid">
       <div><b>${d.mins}</b>minutes</div>
       <div><b>${d.sets}</b>séries</div>
-      <div><b>${d.vol.toLocaleString("fr-FR")}</b>kg soulevés</div>
+      <div><b>${d.vol.toLocaleString("fr-FR")}</b>kg de charge externe</div>
+      ${corps!=null?`<div><b>${corps.toLocaleString("fr-FR")}</b>kg de poids du corps, estimés</div>`:""}
     </div>
-    <div class="lines">
-      ${Object.keys(lines).map(k=>`<div>${esc(k)}<span>${lines[k].join(" · ")}</span></div>`).join("")}
-    </div>
+    ${pct!=null?`<div class="score"><b>${pct} %</b>${esc(motDuTaux(b.taux))}, en moyenne sur les exercices</div>`:""}
+    ${b?`<div class="bil">${b.lignes.map(l=>{
+      const t=l.taux!=null?Math.round(l.taux*100):null;
+      /* Sur une séance d'avant le journal détaillé, une ligne absente n'est pas
+         un zéro : c'est une absence de trace. Elle ne se chiffre donc pas — et
+         elle ne compte pas non plus dans la moyenne. */
+      const muet=l.ajuste||(l.vide&&!b.complet);
+      const fait=l.vide?(b.complet?"exercice passé":"non enregistré"):l.detail.join(" · ");
+      return `<div class="bl">
+        <span class="bn">${esc(l.n)}${l.ajuste?` <i style="font-style:normal;color:var(--steel)">· ajusté</i>`:""}</span>
+        <span class="bd">${esc(fait)}</span>
+        <span class="bt${!muet&&t!=null&&t>=100?" ok":""}">${muet?"—":(t!=null?t+" %":"—")}</span>
+      </div>`;}).join("")}</div>`:""}
+    ${b&&b.ajustes?`<div class="note">${b.ajustes} exercice${b.ajustes>1?"s":""} abaissé${b.ajustes>1?"s":""} en séance : l'objectif a changé en cours de route, il ne compte pas comme un manque.</div>`:""}
+    ${b&&!b.complet?`<div class="note">Cette séance a été enregistrée avant que l'objectif ne soit inscrit série par série : la comparaison est reconstituée à partir de la première série de chaque exercice, et les exercices au temps n'y figurent pas.</div>`:""}
+    ${corps!=null?`<div class="note">Le poids du corps est une estimation : environ deux tiers du corps aux pompes, un peu moins de la moitié aux dips sur banc, pieds au sol. Il est tenu à part de la charge externe pour que « kg soulevés » reste comparable d'une séance à l'autre.</div>`:""}
     ${(()=>{
       const t=tendance(56); if(!t) return "";
       const bouts=SERIES.filter(se=>t[se.k]!=null).map(se=>`${se.nom.toLowerCase()} ${signe(t[se.k])} kg`);
       return `<div class="empty" style="padding-top:18px">Sur les ${t.j} derniers jours : ${bouts.join(", ")}.</div>`;
     })()}
-    <div class="empty" style="border:0;padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
-    <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1;background:transparent;border:1.5px solid var(--ink);color:var(--ink)">Monter d'un cran</button></div>
+    ${frais?`<div class="empty" style="border:0;padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
+    <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1;background:transparent;border:1.5px solid var(--ink);color:var(--ink)">Monter d'un cran</button></div>`
+    :`<div class="empty" style="border:0;padding-top:12px">Séance faite au niveau ${d.lvl||0}.</div>`}
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
 }
 
-function render(){ if(S) saveCur(); S?renderSession():renderHome(); }
+function render(){
+  if(S) saveCur();
+  S?renderSession():renderHome();
+  requestAnimationFrame(reserverSousLaFeuille);
+}
+/* Rotation de l'écran ou clavier qui s'ouvre : la feuille change de hauteur. */
+addEventListener("resize",()=>requestAnimationFrame(reserverSousLaFeuille));
 
 /* =========================================================
    7. INTERACTIONS
@@ -1707,10 +2108,15 @@ view.addEventListener("click",ev=>{
   if(b.id==="g-import"){ return el("g-file").click(); }
   if(b.id==="g-save"){ readGear(); buildLoads(); save(); toast("Matériel enregistré"); return render(); }
   if(b.id==="hard") return harder();
+  if(b.id==="soft") return plusDur();
   if(b.id==="hard-done"){
     const n=raiseLevel(lastDone.id);
     if(n) toast("Niveau "+n+" : la prochaine séance "+lastDone.id+" partira de là");
     return renderDone(lastDone);
+  }
+  if(b.dataset.bilan){
+    const h=DATA.history.find(x=>x.d===+b.dataset.bilan);
+    if(h) return renderDone(h,false);
   }
   if(b.dataset.delh){
     const d=+b.dataset.delh, s=DATA.history.find(h=>h.d===d);
@@ -1720,6 +2126,7 @@ view.addEventListener("click",ev=>{
   }
   if(b.id==="go"){ const e=curEx(); return e.type==="time"?startWork():(validateSet(),render()); }
   if(b.id==="skip"){
+    S.events.push({at:Date.now(), t:"passe", i:S.i, n:curEx().n, quoi:"exercice passé"});
     Timer.cancel(); S.i++; S.set=1;
     if(S.i>=S.p.ex.length) return finish();
     return render();
@@ -1727,6 +2134,10 @@ view.addEventListener("click",ev=>{
   if(b.id==="prev"){
     Timer.cancel();
     if(S.set>1) S.set--; else if(S.i>0){ S.i--; S.set=S.p.ex[S.i].sets; }
+    /* Revenir en arrière défait aussi l'inscription : sans ça, revalider la même
+       série la compterait deux fois dans le journal. */
+    const d=S.log[S.log.length-1];
+    if(d&&d.n===curEx().n&&d.set===S.set) S.log.pop();
     return render();
   }
   if(b.id==="quit"){
@@ -1786,6 +2197,7 @@ function endSwipe(){
 view.addEventListener("pointerup",endSwipe);
 view.addEventListener("pointercancel",endSwipe);
 
+el("t-reduce").onclick=()=>basculerReduction();
 el("t-toggle").onclick=()=>Timer.toggle();
 el("t-plus").onclick=()=>Timer.add(15);
 el("t-minus").onclick=()=>Timer.add(-15);
@@ -1931,6 +2343,10 @@ function importBalance(file){
   };
   r.readAsText(file);
 }
+
+/* Toucher l'écran suffit à faire taire l'alarme : on a entendu, inutile
+   d'attendre les trois cycles ni de viser un bouton précis. */
+document.addEventListener("pointerdown",()=>{ if(alarme) alarmeArrete(); },true);
 
 document.addEventListener("visibilitychange",()=>{
   if(!document.hidden){

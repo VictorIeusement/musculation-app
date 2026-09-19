@@ -117,11 +117,17 @@ demande le réseau.
 ## Élastique, sans rien à accrocher
 
 Aucun exercice ne suppose un point d'ancrage dans la pièce : c'est le corps qui
-tend l'élastique. Extension triceps, le pied arrière est posé dessus en fente et
-la bande remonte derrière le dos ; tirage visage, les deux pieds sont dessus et
-le buste se penche à 45°, ce qui rend la traction horizontale par rapport au
-tronc. Reculer le pied ou écarter les pieds durcit l'exercice — c'est le réglage
-de charge de l'élastique. Les schémas montrent l'ancrage.
+tend l'élastique. Il ne reste qu'un exercice à la bande, le tirage visage :
+assis au sol, jambes tendues, la boucle passée autour des deux pieds, et le
+tirage vers le front. Raccourcir la prise durcit l'exercice — c'est le réglage
+de charge de l'élastique. Le schéma montre l'ancrage.
+
+L'extension triceps s'y faisait aussi, pied arrière sur la bande et remontée
+derrière le dos jusqu'à la nuque : ce montage demande près d'un mètre cinquante
+d'élastique sous tension, ce qu'une boucle courte n'atteint pas. Elle se fait
+maintenant à un haltère tenu à deux mains au-dessus de la tête. L'exercice y
+gagne au passage d'être chargeable, donc de rentrer dans la progression au lieu
+d'être un exercice muet.
 
 ## Niveau de difficulté
 
@@ -142,6 +148,40 @@ payé en récupération, et s'il ne rentre toujours pas il est refusé plutôt q
 d'allonger la séance. Quand le matériel est saturé, l'app le dit au lieu de
 faire monter un compteur qui ne change rien.
 
+Le bouton « Trop dur », à côté, n'a volontairement pas la même portée. Une
+séance se juge trop facile à la fin, dans son ensemble ; un exercice se révèle
+trop lourd tout de suite, celui-là et pas les autres. « Trop dur » descend donc
+l'exercice en cours d'un seul cran — les répétitions gagnées d'abord, la charge
+ensuite, la récupération rognée en dernier recours — avec effet immédiat sur les
+séries restantes, et la prochaine séance repart de là. Quand l'inventaire est
+court au point qu'un cran de charge retirerait plus de 15 % du poids, c'est une
+répétition qui part à la place : elle se dose.
+
+Le bilan de fin de séance sait quels exercices ont été abaissés en cours de
+route et ne les compte pas comme un manque — sinon la fonctionnalité punirait
+celui qui s'en sert honnêtement.
+
+## Minuteur
+
+La feuille du minuteur se replie d'un appui sur son bandeau : elle passe d'une
+demi-page à une barre basse qui garde le décompte, la progression et « Passer »,
+et rend l'écran aux consignes de l'exercice. Le choix est retenu d'une
+récupération à l'autre. Dans les deux états, la page réserve exactement la
+hauteur de la feuille et le pied de séance se pose dessus : rien de ce qui est
+affiché ne devient inatteignable, ni les consignes, ni « Série validée »,
+« Trop dur » ou « Arrêter ».
+
+Le décompte s'appuie sur un horodatage de fin, pas sur un compteur : il reste
+juste si l'écran s'éteint ou si l'app passe en arrière-plan. L'alarme de fin est
+une onde carrée doublée d'une octave, plus forte et plus longue qu'une
+sinusoïde à volume égal, avec vibration ; elle se répète toutes les trois
+secondes jusqu'à ce qu'on touche l'écran, au plus trois fois.
+
+L'écran est tenu allumé pendant la séance. Le téléphone relâche ce verrou de
+lui-même dès que l'app passe en arrière-plan : il faut donc le reprendre au
+retour, et vérifier qu'il n'est pas simplement périmé — sans quoi l'écran
+s'éteint pour tout le reste de la séance.
+
 ## Séance en cours
 
 L'avancée est enregistrée au fur et à mesure, à chaque série validée, chaque
@@ -156,6 +196,44 @@ séance laissée en plan plus de douze heures est considérée comme abandonnée
 
 Cette séance reste sur l'appareil : elle n'est ni envoyée au serveur, ni
 synchronisée avec l'autre appareil. Seule la séance terminée l'est.
+
+## Ce qui est enregistré, et ce qu'on en lit
+
+Chaque série inscrit le **prévu** et le **réalisé** côte à côte : charge,
+répétitions, durée, récupération réellement prise. L'objectif de référence est
+figé au démarrage de la séance et recopié dans chaque ligne ; le relire plus
+tard donnerait une comparaison qui change à chaque montée de niveau. Les
+exercices au temps et l'échauffement sont inscrits eux aussi. S'y ajoutent les
+événements de séance : cran monté ou descendu, exercice passé.
+
+Le récapitulatif de fin compare les deux, exercice par exercice, et donne un
+pourcentage d'atteinte — la moyenne des rapports par exercice, pas un total
+mêlant des kilos et des secondes. Une ligne d'historique se touche pour revoir
+ce bilan à tout moment.
+
+L'écran Suivi porte, sous les mesures corporelles, une table de progression par
+séance : les dates en colonnes, les exercices en lignes, et l'écart avec la fois
+d'avant. L'écart se calcule sur un seul nombre à la fois — le volume là où il y
+a une charge, le total de répétitions au poids du corps, les secondes tenues sur
+un gainage. Pas de courbe : sur deux ou trois points, une ligne donnerait à une
+variation l'allure d'une tendance.
+
+### Charge réelle au poids du corps
+
+Les pompes et les dips sur banc déplacent une partie du poids du corps, le reste
+étant repris par les pieds au sol : le coefficient `part` de l'exercice, appliqué
+au poids mesuré le jour de la séance, en donne une estimation. Les valeurs
+retenues sont des moyennes de population — environ deux tiers aux pompes, un peu
+moins de la moitié aux dips — et bougent avec la longueur des segments et la
+position des pieds.
+
+Ce chiffre est tenu **séparé** de la charge externe. Trois séries de pompes
+pèsent près de 1 800 kg estimés, plus que toute la barre d'une séance : fondus
+dans le même total, ils rendraient l'historique incomparable du jour au
+lendemain et « kg soulevés » cesserait de vouloir dire ce qu'on a mis sur la
+barre. Le calcul se fait à la lecture, pas à l'enregistrement : il vaut donc
+aussi pour les séances déjà faites, et une pesée qui arrive après coup le
+complète.
 
 ## Données
 
