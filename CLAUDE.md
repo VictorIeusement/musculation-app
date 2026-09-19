@@ -66,7 +66,11 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    `periodes()` et `tendance()` mettent l'entraînement en regard des mesures
    sans jamais affirmer de causalité, et se taisent quand la mesure de référence
    est bien plus ancienne que la fenêtre demandée.
-2 quater. BALANCE CONNECTÉE — le secret Withings ne peut pas vivre dans l'app,
+2 quater. BALANCE CONNECTÉE — `DATA.balanceLiee` retient si la liaison tient :
+   seul le Worker le sait, et sans cette mémoire l'écran proposait de connecter
+   une balance déjà connectée. Tant que l'état est inconnu, le relevé se refait
+   au bout d'une minute et non de six heures, sinon l'écran mentirait une
+   demi-journée. Le secret Withings ne peut pas vivre dans l'app,
    qui est publiée : c'est le Worker qui le détient et qui parle à Withings.
    `auWorker()` l'appelle avec le même jeton que la sauvegarde, donc la liaison
    suit la sauvegarde en ligne — pas de Worker, pas de balance. Le relevé est
@@ -147,6 +151,16 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    charge ou durée, récup), niveau de difficulté compris.
 
 ## Habillage
+Quatre niveaux typographiques, à respecter : **titre d'écran** (`.top.page h1`,
+30 px), **groupe** (`.group-h`, 18 px encre, filet au-dessus), **sous-section**
+(`.section-h`, 12 px capitales espacées acier, sans filet), **texte** (`.empty`,
+13,5 px acier). L'accueil est la seule exception : son `h1` est un surtitre de
+15 px, parce que c'est le bloc « Prochaine séance » qui y porte le regard.
+Le filet appartient au groupe et à lui seul : quand `.empty` en portait un
+aussi, deux traits marquaient deux choses différentes et on ne savait plus
+lequel séparait quoi. La respiration se met AVANT un titre, elle appartient à la
+section qui s'ouvre.
+
 Direction « cockpit » : fond sombre, chiffres lumineux, un seul accent
 (`--signal`) pour ce qui est actif ou primaire. Tout passe par les variables de
 `:root` — `--concrete` le fond, `--surface` les cartes et feuilles, `--ink` le

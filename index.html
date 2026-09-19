@@ -75,9 +75,17 @@
   h1,h2,h3,p,ul{margin:0}
 
   /* ---------- header ---------- */
+  /* Quatre niveaux, nettement séparés : titre d'écran, titre de section, texte,
+     tableau. L'accueil est le seul écran dont le titre est un surtitre — c'est
+     le bloc « Prochaine séance » qui y porte le regard. Partout ailleurs le
+     titre d'écran est le seul repère : à 15 px il passait sous un libellé de
+     formulaire, et on ne savait plus sur quel écran on était. */
   .top{padding:26px 20px 18px;border-bottom:1px solid var(--line)}
   .top h1{font-size:15px;font-weight:800;letter-spacing:-.01em}
+  .top.page{padding:26px 20px 20px}
+  .top.page h1{font-size:30px;line-height:1.05;letter-spacing:-.035em}
   .top .sub{font-size:13px;color:var(--steel);margin-top:3px}
+  .top.page .sub{margin-top:6px;font-size:13.5px;max-width:36ch;line-height:1.45}
   .top button.sub{min-height:44px;padding:0 10px;border-radius:11px;background:var(--concrete-2);
                   color:var(--ink);font-weight:600;text-decoration:none}
 
@@ -97,7 +105,17 @@
   .cta:active{transform:translateY(1px)}
 
   .section{padding:6px 20px 0}
-  .section-h{font-size:13px;color:var(--steel);padding:18px 0 10px}
+  /* Deux niveaux, et c'est le second qui manquait : « Disques de barre » se
+     lisait au même rang que « Barre olympique », alors qu'il en dépend. Le
+     groupe porte le filet et la taille ; la sous-section n'a que les capitales
+     espacées. La respiration va avant le titre, à la section qui s'ouvre, pas
+     à celle qui se termine. */
+  .group-h{margin-top:30px;padding:19px 0 7px;border-top:1px solid var(--line);
+           font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+  .group-h:first-child{margin-top:2px;padding-top:14px;border-top:0}
+  .section-h{margin-top:20px;padding:0 0 8px;
+             font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+             color:var(--steel)}
 
   .row{
     display:flex;align-items:center;gap:14px;padding:15px 0;border-top:1px solid var(--line);
@@ -118,7 +136,10 @@
   .hist .d{font-size:13px;color:var(--steel);width:68px;flex:none;font-variant-numeric:tabular-nums}
   .hist .n{font-size:15px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hist .v{font-size:13px;color:var(--steel);font-variant-numeric:tabular-nums;flex:none}
-  .empty{padding:30px 0 10px;color:var(--steel);font-size:14px;line-height:1.5;border-top:1px solid var(--line)}
+  /* Texte d'explication. Il portait un filet, qui entrait en concurrence avec
+     celui des titres de section : deux traits pour deux rôles différents, on ne
+     savait plus lequel séparait quoi. Le filet est maintenant au titre seul. */
+  .empty{padding:11px 0 4px;color:var(--steel);font-size:13.5px;line-height:1.55}
 
   .pl{padding:11px 0;border-top:1px solid var(--line)}
   .pl .pn{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em}
@@ -663,7 +684,7 @@ function figureDe(nom){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0,balanceAt:0};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0,balanceAt:0,balanceLiee:false};
 let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
@@ -716,7 +737,8 @@ function merge(a,b){
     gear:newer.gear||older.gear,
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
-    sync:a.sync, syncedAt:a.syncedAt, cur:a.cur, balanceAt:a.balanceAt||0
+    sync:a.sync, syncedAt:a.syncedAt, cur:a.cur,
+    balanceAt:a.balanceAt||0, balanceLiee:!!a.balanceLiee
   };
 }
 
@@ -1572,7 +1594,7 @@ const duree=s=>s>=60 ? (s%60 ? Math.floor(s/60)+" min "+(s%60) : Math.round(s/60
 function paramsOf(pid,e){
   if(e.type==="time") return (e.sets>1?e.sets+" × ":"")+duree(getD(pid,e));
   const charge={bar:fmt(getW(pid,e))+" kg",
-                db:fmt(getW(pid,e))+" kg par haltère",
+                db:fmt(getW(pid,e))+(e.uni?" kg, un seul haltère":" kg par haltère"),
                 bw:"poids du corps", band:"élastique"}[e.load];
   const rec=getRest(pid,e);
   return e.sets+" × "+getR(pid,e)+(e.side?" par côté":"")+
@@ -1607,20 +1629,20 @@ function renderHome(){
   </div>
   <button class="cta" data-start="${idx}">Commencer la séance ${p.id}</button>
   <div class="section">
-    <div class="section-h">Au programme, séance ${p.id}</div>
+    <div class="group-h">Au programme, séance ${p.id}</div>
     ${p.ex.map(e=>`
       <div class="pl${e.load==="none"?" soft":""}">
         <span class="pn">${esc(e.n)}</span>
         <span class="pp">${paramsOf(p.id,e)}</span>
       </div>`).join("")}
-    <div class="section-h">Les trois séances</div>
+    <div class="group-h">Les trois séances</div>
     ${PROGRAM.map((q,i)=>`
       <button class="row ${i===idx?"next":""}" data-start="${i}">
         <span class="tag">${q.id}</span>
         <span class="rt"><strong>${esc(q.name)}</strong><span>${q.ex.slice(1,-1).map(e=>esc(e.n)).join(" · ")}</span></span>
         <span class="go">${estimate(q)} min</span>
       </button>`).join("")}
-    <div class="section-h">Historique</div>
+    <div class="group-h">Historique</div>
     ${h.length?h.slice(0,12).map(s=>`
       <div class="swipe">
         <button class="swipe-del" data-delh="${s.d}">Supprimer</button>
@@ -1729,7 +1751,10 @@ const tonnes=v=>fmt((v/1000).toFixed(1))+" t";
 
 /* Plage de temps affichée. Une seule commande, au-dessus de tout ce qu'elle
    régit : les quatre cadres et le tableau des périodes bougent ensemble. */
-let plage=0;   // en jours ; 0 = tout l'historique
+/* Trois mois par défaut : c'est la fenêtre où une variation de poids veut dire
+   quelque chose. « Tout » remontait jusqu'aux pesées les plus anciennes et
+   écrasait les dernières semaines contre le bord du cadre. */
+let plage=90;  // en jours ; 0 = tout l'historique
 const PLAGES=[[90,"3 mois"],[365,"1 an"],[0,"Tout"]];
 /* La plage s'ancre sur l'événement le plus récent, mesure ou séance confondues,
    et s'applique aux deux : sinon l'axe se calerait sur les seules mesures et
@@ -1899,33 +1924,35 @@ function renderBody(){
   const t30=tendance(30);
   const ecart = t30&&t30.kg!=null ? ` · ${signe(t30.kg)} kg en ${t30.j} jours` : "";
   view.innerHTML=`
-  <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+  <div class="top page" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
     <div><h1>Suivi</h1><div class="sub" id="b-sub">${der?`${der.kg!=null?kilo(der.kg)+" kg":"—"}${ecart}`:"Rien d'importé pour l'instant"}</div></div>
     <button id="b-import" class="sub" style="text-decoration:underline;text-underline-offset:3px;flex:none">Importer</button>
   </div>
   <div class="section">
+    <div class="group-h">Composition corporelle</div>
     ${mes.length>1?`<div class="plages">${PLAGES.map(([j,nom])=>
         `<button data-plage="${j}" class="${j===plage?"actif":""}">${nom}</button>`).join("")}</div>`:""}
-    ${vues.length>1?courbes(vues,seances):mes.length>1?`<div class="empty" style="border:0">Moins de deux mesures sur cette plage. Élargis-la.</div>`:`
-      <div class="empty" style="border:0">Importe l'export de ta balance pour voir ton poids, ta masse grasse et ta masse musculaire évoluer ici.
+    ${vues.length>1?courbes(vues,seances):mes.length>1?`<div class="empty">Moins de deux mesures sur cette plage. Élargis-la.</div>`:`
+      <div class="empty">Importe l'export de ta balance pour voir ton poids, ta masse grasse et ta masse musculaire évoluer ici.
 
       Sur le site de Withings, compte → télécharger mes données ; le fichier <code>weight.csv</code> de l'archive est celui à importer. Les exports d'autres balances passent aussi, tant que le fichier a une colonne de date et une de poids.</div>`}
-    <div class="section-h">Balance connectée</div>
+    <div class="group-h">Balance connectée</div>
     ${DATA.sync&&DATA.sync.url?`
-      <div class="empty" style="border:0;padding:0 0 12px">Une fois connectée, l'app relève les nouvelles pesées toute seule à l'ouverture de cet écran. C'est le serveur qui détient l'autorisation ; l'app ne voit jamais tes identifiants Withings.</div>
+      <div class="empty" style="padding:0 0 12px">Une fois connectée, l'app relève les nouvelles pesées toute seule à l'ouverture de cet écran. C'est le serveur qui détient l'autorisation ; l'app ne voit jamais tes identifiants Withings.</div>
       <div class="gline" style="gap:12px;border:0">
-        <button class="add" id="w-lier" style="flex:1">Connecter Withings</button>
-        <button class="add" id="w-relever" style="flex:1">Relever maintenant</button>
+        ${DATA.balanceLiee
+          ? `<button class="add" id="w-relever" style="flex:1">Relever maintenant</button>`
+          : `<button class="add" id="w-lier" style="flex:1">Connecter Withings</button>`}
       </div>
-      <div class="empty" style="border:0;padding:8px 0 0">${DATA.balanceAt?"Dernier relevé : "+new Date(DATA.balanceAt).toLocaleString("fr-FR"):"Jamais relevé."} <button id="w-oublier" style="color:var(--steel);text-decoration:underline;text-underline-offset:3px;font-size:13px;padding:8px 4px">Oublier la liaison</button></div>`
-    :`<div class="empty" style="border:0;padding:0 0 12px">Il faut d'abord la sauvegarde en ligne, dans l'écran Matériel : c'est le serveur qui détient l'autorisation Withings, parce qu'un secret ne peut pas vivre dans une app publiée.</div>`}
+      <div class="empty" style="padding:8px 0 0">${DATA.balanceLiee?"Balance connectée. ":""}${DATA.balanceAt?"Dernier relevé : "+new Date(DATA.balanceAt).toLocaleString("fr-FR"):"Jamais relevé."}${DATA.balanceLiee?` <button id="w-oublier" style="color:var(--steel);text-decoration:underline;text-underline-offset:3px;font-size:13px;padding:8px 4px">Oublier la liaison</button>`:""}</div>`
+    :`<div class="empty" style="padding:0 0 12px">Il faut d'abord la sauvegarde en ligne, dans l'écran Matériel : c'est le serveur qui détient l'autorisation Withings, parce qu'un secret ne peut pas vivre dans une app publiée.</div>`}
 
     ${vues.length?(()=>{
       const per=periodes(vues,seances).filter(p=>p.n||p.dkg!=null);
       const utiles=per.filter(p=>p.n&&(p.dkg!=null||p.dmuscle!=null));
       return `
-    <div class="section-h">Entraînement et mesures, par période de 4 semaines</div>
-    ${utiles.length<2?`<div class="empty" style="border:0;padding:0 0 12px">Il faut deux périodes de quatre semaines comportant à la fois des séances et des pesées pour que la mise en regard ait un sens. ${utiles.length?"Une seule pour l'instant.":"Aucune pour l'instant."} Continue, ça se remplit tout seul.</div>`:""}
+    <div class="group-h">Entraînement et mesures</div>
+    ${utiles.length<2?`<div class="empty" style="padding:0 0 12px">Il faut deux périodes de quatre semaines comportant à la fois des séances et des pesées pour que la mise en regard ait un sens. ${utiles.length?"Une seule pour l'instant.":"Aucune pour l'instant."} Continue, ça se remplit tout seul.</div>`:""}
     ${per.length?`<table class="tab"><thead><tr>
       <th>Période</th><th>Séances</th><th>Volume</th>${SERIES.map(se=>`<th><span class="pastille" style="background:${se.c}"></span>Δ</th>`).join("")}
     </tr></thead><tbody>
@@ -1934,21 +1961,21 @@ function renderBody(){
         ${SERIES.map(se=>`<td>${p["d"+se.k]!=null?signe(p["d"+se.k]):"—"}</td>`).join("")}
       </tr>`).join("")}
     </tbody></table>
-    <div class="empty" style="border:0;padding-top:14px">Ce tableau met côte à côte ce que tu as fait et ce que la balance a mesuré pendant le même temps. Il ne prouve pas de lien de cause à effet : sur ces échelles, ce que tu manges et ce que tu dors pèsent plus lourd que la salle, et la composition corporelle répond en mois, pas en semaines.</div>`:""}
-    <div class="section-h">Mesures</div>`;})():""}
+    <div class="empty" style="padding-top:14px">Ce tableau met côte à côte ce que tu as fait et ce que la balance a mesuré pendant le même temps. Il ne prouve pas de lien de cause à effet : sur ces échelles, ce que tu manges et ce que tu dors pèsent plus lourd que la salle, et la composition corporelle répond en mois, pas en semaines.</div>`:""}
+    <div class="group-h">Toutes les pesées</div>`;})():""}
     ${vues.length?`
     <table class="tab"><thead><tr>
       <th>Date</th>${SERIES.map(se=>`<th><span class="pastille" style="background:${se.c}"></span>${se.court}</th>`).join("")}
     </tr></thead><tbody>
       ${vues.slice(0,14).map(m=>`<tr><td>${jour(m.d)}</td>${SERIES.map(se=>`<td>${m[se.k]!=null?kilo(m[se.k]):"—"}</td>`).join("")}</tr>`).join("")}
     </tbody></table>
-    <div class="section-h">Début du suivi</div>
+    <div class="group-h">Début du suivi</div>
     <div class="gline">
       <label>Ignorer les mesures d'avant</label>
       <input type="date" id="b-depuis" value="${DATA.bodyFrom?new Date(DATA.bodyFrom).toISOString().slice(0,10):""}" style="width:150px;text-align:left">
     </div>
-    <div class="empty" style="border:0;padding:4px 0 0">${ignorees?`${ignorees} mesure${ignorees>1?"s":""} ignorée${ignorees>1?"s":""}, conservée${ignorees>1?"s":""} mais écartée${ignorees>1?"s":""} de tous les calculs. Vide le champ pour les reprendre.`:"À régler si ta balance a changé de mode ou de profil : ce qui précède cette date n'est pas comparable, et fausserait les écarts."}</div>
-    <div class="empty" style="border:0;padding-top:14px">${vues.length} mesure${vues.length>1?"s":""} sur la plage${vues.length<mes.length?`, ${mes.length} en mémoire`:""}${vues.length>14?", les 14 dernières ci-dessus":""}, une par jour — la première, celle du matin. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
+    <div class="empty" style="padding:4px 0 0">${ignorees?`${ignorees} mesure${ignorees>1?"s":""} ignorée${ignorees>1?"s":""}, conservée${ignorees>1?"s":""} mais écartée${ignorees>1?"s":""} de tous les calculs. Vide le champ pour les reprendre.`:"À régler si ta balance a changé de mode ou de profil : ce qui précède cette date n'est pas comparable, et fausserait les écarts."}</div>
+    <div class="empty" style="padding-top:14px">${vues.length} mesure${vues.length>1?"s":""} sur la plage${vues.length<mes.length?`, ${mes.length} en mémoire`:""}${vues.length>14?", les 14 dernières ci-dessus":""}, une par jour — la première, celle du matin. Elles partent chiffrées avec le reste si la sauvegarde en ligne est active.</div>`:""}
     ${blocProgression()}
   </div>
   <input type="file" id="b-file" accept=".csv,text/csv,text/plain" style="display:none">
@@ -1962,29 +1989,30 @@ function renderBody(){
 function blocProgression(){
   const pr=progression();
   if(!pr.length) return `
-    <div class="section-h">Progression par exercice</div>
-    <div class="empty" style="border:0">Rien à comparer pour l'instant. La progression se lit d'une séance à l'autre du même type : il en faut deux. Elle se remplira toute seule.</div>`;
+    <div class="group-h">Progression par exercice</div>
+    <div class="empty">Rien à comparer pour l'instant. La progression se lit d'une séance à l'autre du même type : il en faut deux. Elle se remplira toute seule.</div>`;
   const corps=DATA.history.map(h=>({d:h.d, v:volumeCorps(h.log,h.d)})).filter(x=>x.v!=null);
-  return pr.map(g=>`
-    <div class="section-h">Progression · séance ${g.id}, ${esc(g.nom.toLowerCase())}</div>
+  return `<div class="group-h">Progression par exercice</div>`
+  + pr.map(g=>`
+    <div class="section-h">Séance ${g.id} · ${esc(g.nom)}</div>
     <div class="tab-wrap"><table class="tab"><thead><tr><th>Exercice</th>
       ${g.dates.slice().reverse().map(d=>`<th>${jour(d)}</th>`).join("")}<th>Δ</th></tr></thead>
     <tbody>${g.lignes.map(l=>`<tr><td>${esc(l.n)}</td>
       ${l.cases.slice().reverse().map(c=>`<td>${c?esc(c.txt):"—"}</td>`).join("")}
       <td>${l.ecart!=null?(l.ecart>0?"+":"")+Math.round(l.ecart*100)+" %":"—"}</td>
     </tr>`).join("")}</tbody></table></div>`).join("")
-  + `<div class="empty" style="border:0;padding-top:14px">Δ compare la dernière séance à la précédente du même type, sur un seul nombre à la fois : le volume là où il y a une charge, le total de répétitions au poids du corps, les secondes tenues sur un gainage. Une case vide est un exercice passé ou pas encore enregistré.</div>`
-  + (corps.length?`<div class="empty" style="border:0;padding-top:10px">Charge estimée du poids du corps, par séance : ${corps.slice(0,4).map(x=>`${jour(x.d)} ${x.v.toLocaleString("fr-FR")} kg`).join(" · ")}. Estimation, tenue à part des kg de barre et d'haltères.</div>`:"");
+  + `<div class="empty" style="padding-top:14px">Δ compare la dernière séance à la précédente du même type, sur un seul nombre à la fois : le volume là où il y a une charge, le total de répétitions au poids du corps, les secondes tenues sur un gainage. Une case vide est un exercice passé ou pas encore enregistré.</div>`
+  + (corps.length?`<div class="empty" style="padding-top:10px">Charge estimée du poids du corps, par séance : ${corps.slice(0,4).map(x=>`${jour(x.d)} ${x.v.toLocaleString("fr-FR")} kg`).join(" · ")}. Estimation, tenue à part des kg de barre et d'haltères.</div>`:"");
 }
 
 function renderGear(){
   const g=DATA.gear;
   view.innerHTML=`
-  <div class="top"><h1>Matériel</h1><div class="sub">Les charges proposées se recalculent à partir d'ici</div></div>
+  <div class="top page"><h1>Matériel</h1><div class="sub">Les charges proposées se recalculent à partir d'ici</div></div>
   <div class="section">
-    <div class="section-h">Barre olympique</div>
+    <div class="group-h">Barre olympique</div>
     <div class="gline"><label>Poids de la barre à vide</label><input type="number" id="g-bar" value="${g.bar}" step="0.5" min="1"><em>kg</em></div>
-    <div class="empty" style="border:0;padding:0 0 4px">Développé couché, rowing barre, soulevé de terre, hip thrust, développé militaire.</div>
+    <div class="empty" style="padding:0 0 4px">Développé couché, rowing barre, soulevé de terre, hip thrust, développé militaire.</div>
     <div class="section-h">Disques de barre, par paire</div>
     ${g.plates.map((p,i)=>`
       <div class="gline">
@@ -1996,11 +2024,11 @@ function renderGear(){
       <input type="number" id="g-new" placeholder="poids" step="0.5" min="0.5" style="flex:1">
       <button class="add" id="g-add">Ajouter ce disque</button>
     </div>
-    <div class="empty" style="border:0;padding:12px 0 0">Charges atteignables : ${BAR.map(v=>fmt(v)).join(" · ")} kg.</div>
+    <div class="empty" style="padding:12px 0 0">Charges atteignables : ${BAR.map(v=>fmt(v)).join(" · ")} kg.</div>
 
-    <div class="section-h">Haltères</div>
+    <div class="group-h">Haltères</div>
     <div class="gline"><label>Poids d'un haltère à vide</label><input type="number" id="g-dbbar" value="${fmt(g.dbBar)}" step="0.5" min="0"><em>kg</em></div>
-    <div class="empty" style="border:0;padding:0 0 4px">Leur trou est plus petit que celui d'un disque olympique : ces disques-là ne se montent pas sur la barre, et l'inverse non plus. D'où deux inventaires.</div>
+    <div class="empty" style="padding:0 0 4px">Leur trou est plus petit que celui d'un disque olympique : ces disques-là ne se montent pas sur la barre, et l'inverse non plus. D'où deux inventaires.</div>
     <div class="section-h">Disques d'haltère, à la pièce</div>
     ${(g.dbPlates||[]).map((p,i)=>`
       <div class="gline">
@@ -2012,17 +2040,17 @@ function renderGear(){
       <input type="number" id="g-dnew" placeholder="poids" step="0.5" min="0.5" style="flex:1">
       <button class="add" id="g-dadd">Ajouter ce disque</button>
     </div>
-    <div class="empty" style="border:0;padding:12px 0 0">À deux haltères identiques — curl, élévations, développé incliné : ${DB.map(v=>fmt(v)).join(" · ")} kg par haltère.</div>
-    <div class="empty" style="border:0;padding:8px 0 0">À un seul haltère — pullover, rowing unilatéral, extension triceps : ${DB_UNI.map(v=>fmt(v)).join(" · ")} kg. Tout le sac part sur la même barre, d'où des charges qui montent deux fois plus haut.</div>
-    <div class="section-h">Sauvegarde</div>
-    <div class="empty" style="border:0;padding:0 0 12px">Tes séances vivent dans ce navigateur, sur ce téléphone. Vider les données de navigation les efface. Exporte de temps en temps.</div>
+    <div class="empty" style="padding:12px 0 0">À deux haltères identiques — curl, élévations, développé incliné : ${DB.map(v=>fmt(v)).join(" · ")} kg par haltère.</div>
+    <div class="empty" style="padding:8px 0 0">À un seul haltère — pullover, rowing unilatéral, extension triceps : ${DB_UNI.map(v=>fmt(v)).join(" · ")} kg. Tout le sac part sur la même barre, d'où des charges qui montent deux fois plus haut.</div>
+    <div class="group-h">Sauvegarde</div>
+    <div class="empty" style="padding:0 0 12px">Tes séances vivent dans ce navigateur, sur ce téléphone. Vider les données de navigation les efface. Exporte de temps en temps.</div>
     <div class="gline" style="gap:12px">
       <button class="add" id="g-export" style="flex:1">Exporter un fichier</button>
       <button class="add" id="g-import" style="flex:1;background:var(--concrete-2);color:var(--ink)">Importer</button>
       <input type="file" id="g-file" accept="application/json" style="display:none">
     </div>
-    <div class="section-h">Sauvegarde en ligne, chiffrée</div>
-    <div class="empty" style="border:0;padding:0 0 12px">À renseigner une fois par appareil. Tes séances sont chiffrées dans ce navigateur avant d'être envoyées : le serveur ne stocke que des octets illisibles. La phrase ne sort jamais d'ici et n'est jamais publiée dans le dépôt. Si tu la perds, la sauvegarde est définitivement perdue.</div>
+    <div class="group-h">Sauvegarde en ligne, chiffrée</div>
+    <div class="empty" style="padding:0 0 12px">À renseigner une fois par appareil. Tes séances sont chiffrées dans ce navigateur avant d'être envoyées : le serveur ne stocke que des octets illisibles. La phrase ne sort jamais d'ici et n'est jamais publiée dans le dépôt. Si tu la perds, la sauvegarde est définitivement perdue.</div>
     <div class="gline" style="display:block">
       <label style="display:block;margin-bottom:8px">Adresse du serveur</label>
       <input type="url" id="s-url" value="${esc((DATA.sync&&DATA.sync.url)||"")}" placeholder="https://seances-sync....workers.dev" style="width:100%;text-align:left">
@@ -2032,9 +2060,9 @@ function renderGear(){
       <input type="password" id="s-key" value="${esc((DATA.sync&&DATA.sync.key)||"")}" style="width:100%;text-align:left">
     </div>
     <div class="gline"><button class="add" id="s-now" style="flex:1">Sauvegarder maintenant</button></div>
-    <div class="empty" style="border:0;padding:8px 0 0">${DATA.syncedAt?"Dernière sauvegarde : "+new Date(DATA.syncedAt).toLocaleString("fr-FR"):"Jamais sauvegardé pour l'instant."}</div>
+    <div class="empty" style="padding:8px 0 0">${DATA.syncedAt?"Dernière sauvegarde : "+new Date(DATA.syncedAt).toLocaleString("fr-FR"):"Jamais sauvegardé pour l'instant."}</div>
     <div class="section-h">Jeton à donner au serveur</div>
-    <div class="empty" style="border:0;padding:0 0 12px">Le serveur ne connaît pas ta phrase : il reçoit ce jeton, calculé à partir d'elle et impossible à remonter. C'est lui, et lui seul, qu'il faut coller dans <code>npx wrangler secret put SYNC_KEY</code>.</div>
+    <div class="empty" style="padding:0 0 12px">Le serveur ne connaît pas ta phrase : il reçoit ce jeton, calculé à partir d'elle et impossible à remonter. C'est lui, et lui seul, qu'il faut coller dans <code>npx wrangler secret put SYNC_KEY</code>.</div>
     <div class="gline" style="display:block">
       <button class="add" id="s-token" style="width:100%">Afficher le jeton</button>
       <div id="s-token-out" style="display:none;margin-top:10px;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -2094,9 +2122,9 @@ function renderDone(d,frais=true){
       const bouts=SERIES.filter(se=>t[se.k]!=null).map(se=>`${se.nom.toLowerCase()} ${signe(t[se.k])} kg`);
       return `<div class="empty" style="padding-top:18px">Sur les ${t.j} derniers jours : ${bouts.join(", ")}.</div>`;
     })()}
-    ${frais?`<div class="empty" style="border:0;padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
+    ${frais?`<div class="empty" style="padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
     <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1;background:transparent;border:1.5px solid var(--ink);color:var(--ink)">Monter d'un cran</button></div>`
-    :`<div class="empty" style="border:0;padding-top:12px">Séance faite au niveau ${d.lvl||0}.</div>`}
+    :`<div class="empty" style="padding-top:12px">Séance faite au niveau ${d.lvl||0}.</div>`}
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
@@ -2122,8 +2150,12 @@ view.addEventListener("click",ev=>{
   if(b.id==="gear") return renderGear();
   if(b.id==="suivi"){
     renderBody();
-    if(DATA.sync&&DATA.sync.url&&Date.now()-(DATA.balanceAt||0)>RELEVE)
-      releverBalance(true).then(neuf=>{ if(neuf) renderBody(); });
+    /* Six heures entre deux relevés — sauf quand on ignore encore si la liaison
+       tient : une minute suffit alors, sinon l'écran proposerait de connecter
+       une balance déjà connectée pendant six heures. */
+    const attente=DATA.balanceLiee?RELEVE:60000;
+    if(DATA.sync&&DATA.sync.url&&Date.now()-(DATA.balanceAt||0)>attente)
+      releverBalance(true).then(change=>{ if(change) renderBody(); });
     return;
   }
   if(b.id==="b-import") return el("b-file").click();
@@ -2361,7 +2393,7 @@ async function connecterBalance(){
 
 async function oublierBalance(){
   if(!confirm("Oublier la liaison Withings ? Les mesures déjà relevées restent.")) return;
-  try{ await auWorker("/withings/forget","POST"); DATA.balanceAt=0; save(); renderBody(); toast("Liaison oubliée"); }
+  try{ await auWorker("/withings/forget","POST"); DATA.balanceAt=0; DATA.balanceLiee=false; save(); renderBody(); toast("Liaison oubliée"); }
   catch(e){ toast("Balance : "+e.message); }
 }
 
@@ -2372,15 +2404,18 @@ async function releverBalance(silencieux){
     /* on redemande un jour de recouvrement : une pesée peut arriver en retard */
     const depuis=der?`?depuis=${der.d-86400000}`:"";
     const j=await auWorker("/withings/measures"+depuis);
-    DATA.balanceAt=Date.now();
-    if(!j.lie){ if(!silencieux) toast("La balance n'est pas encore connectée"); localSave(); return false; }
-    const avant=(DATA.body||[]).length;
+    /* Le Worker est seul à savoir si la liaison tient : l'app le note, sinon
+       elle propose de connecter une balance déjà connectée. */
+    const avant=!!DATA.balanceLiee;
+    DATA.balanceAt=Date.now(); DATA.balanceLiee=!!j.lie;
+    if(!j.lie){ if(!silencieux) toast("La balance n'est pas encore connectée"); localSave(); return avant!==DATA.balanceLiee; }
+    const combien=(DATA.body||[]).length;
     DATA.body=fusionCorps(j.mesures||[],DATA.body);
     save();
-    const n=DATA.body.length-avant;
+    const n=DATA.body.length-combien;
     if(!silencieux||n) toast(n?`${n} nouvelle${n>1?"s":""} mesure${n>1?"s":""} relevée${n>1?"s":""}`
                              :"Aucune mesure nouvelle");
-    return n>0;
+    return n>0||avant!==DATA.balanceLiee;
   }catch(e){ if(!silencieux) toast("Balance : "+e.message); return false; }
 }
 

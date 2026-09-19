@@ -54,6 +54,10 @@ mesure : les entêtes sont reconnues en français comme en anglais, le séparate
 est deviné, et les décimales à virgule sont acceptées. Réimporter le même
 fichier ne duplique rien ; une mesure par jour est conservée, la plus tardive.
 
+La plage est réglée sur trois mois par défaut : c'est la fenêtre où une
+variation de poids veut dire quelque chose. « Tout » remonte aux pesées les plus
+anciennes et écrase les dernières semaines contre le bord du cadre.
+
 Quatre petits graphiques plutôt qu'un seul : les trois mesures n'ont pas le même
 ordre de grandeur, et sur un axe commun les variations de poids — ce qu'on vient
 regarder — seraient écrasées à plat. Un doigt glissé sur les courbes affiche les
@@ -96,6 +100,13 @@ une URL de redirection qui pointe sur `<url-du-worker>/withings/callback`.
 
 L'import de fichier reste disponible et donne les mêmes courbes : il sert de
 recours si la liaison casse.
+
+Seul le Worker sait si la liaison tient. L'app le note dans `balanceLiee` au
+premier relevé et n'affiche alors plus « Connecter Withings » mais « Relever
+maintenant » et « Oublier la liaison ». Tant que l'état est inconnu, le relevé
+se refait au bout d'une minute plutôt que des six heures habituelles : sinon
+l'écran proposerait pendant une demi-journée de connecter une balance déjà
+connectée.
 
 ## Illustrations et vidéos
 
