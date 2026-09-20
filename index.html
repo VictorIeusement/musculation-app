@@ -278,12 +278,18 @@
   /* ---------- bilan de fin de séance ---------- */
   .score{margin:22px 0 2px;font-size:14px;color:var(--steel)}
   .score b{display:block;font-size:34px;font-weight:800;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+  /* En colonnes, quatre séries écrasaient le nom jusqu'à une lettre par ligne.
+     Le détail d'une série est de longueur imprévisible : il lui faut sa propre
+     ligne, sous le nom et l'objectif. */
   .bil{margin-top:16px}
-  .bil .bl{display:flex;align-items:baseline;gap:10px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
-  .bil .bn{flex:1;min-width:0}
-  .bil .bd{color:var(--steel);font-variant-numeric:tabular-nums;text-align:right}
-  .bil .bt{flex:0 0 54px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .bil .bl{padding:13px 0;border-top:1px solid var(--line)}
+  .bil .bh{display:flex;align-items:baseline;gap:12px;font-size:14px}
+  .bil .bn{flex:1;min-width:0;font-weight:600}
+  .bil .bn em{font-style:normal;font-weight:400;color:var(--steel)}
+  .bil .bt{flex:none;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
   .bil .bt.ok{color:var(--signal)}
+  .bil .bc{font-size:12px;color:var(--steel);margin-top:3px;font-variant-numeric:tabular-nums}
+  .bil .bd{font-size:13px;color:var(--ink-soft);margin-top:5px;font-variant-numeric:tabular-nums}
   .note{font-size:13px;color:var(--steel);padding:12px 0 0;line-height:1.5}
 
   /* ---------- summary ---------- */
@@ -928,8 +934,15 @@ async function syncNow(silent){
     return false;
   }finally{ syncing=false; }
 }
+/* La phrase de chiffrement ne sort pas de l'appareil, et un fichier qui traîne
+   dans les téléchargements, s'envoie par mail ou se dépose dans une discussion
+   est bien plus exposé qu'un serveur. Elle est donc retirée de l'export, avec
+   la séance en cours qui n'a de sens que sur cet appareil. Perdre la phrase,
+   c'est perdre la sauvegarde en ligne : elle se retape, elle ne se transporte
+   pas. */
 function exportData(){
-  const b=new Blob([JSON.stringify(DATA,null,2)],{type:"application/json"});
+  const {sync, cur, ...net}=DATA;
+  const b=new Blob([JSON.stringify(net,null,2)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(b);
   a.download="entrainement-"+new Date().toISOString().slice(0,10)+".json";
@@ -941,7 +954,11 @@ function importData(file){
     try{
       const d=JSON.parse(r.result);
       if(!d.history) throw 0;
+      /* L'export ne porte plus la phrase : c'est celle de l'appareil qui reste
+         en place, sinon importer sa propre sauvegarde couperait la synchro. */
+      const garde=DATA.sync;
       DATA=Object.assign(JSON.parse(JSON.stringify(BLANK)),d);
+      if(garde) DATA.sync=garde;
       if(!DATA.gear) DATA.gear=JSON.parse(JSON.stringify(DEFAULT_GEAR));
       migrerHalteres();
       buildLoads(); save(); render(); toast("Données importées");
@@ -1484,10 +1501,12 @@ function bilan(h){
   const un=v=>v>0?v:1;
   const lignes=p.ex.filter(e=>e.load!=="none").map(e=>{
     const series=(h.log||[]).filter(l=>l.n===e.n), ref=series[0]||{};
-    let fait=0, prevu=0, detail=[];
+    let fait=0, prevu=0, detail=[], cible="";
+    const cote=e.side?" par côté":"";
     if(e.type==="time"){
       const pd=ref.pd!=null?ref.pd:(ref.d!=null?ref.d:(e.dur||0));
       prevu=e.sets*pd;
+      cible=`${e.sets} × ${pd} s${cote}`;
       series.forEach(l=>{ const d=l.d!=null?l.d:pd; fait+=d; detail.push(d+" s"); });
     }else{
       /* Sans objectif inscrit, la PREMIÈRE série sert de référence — répétitions
@@ -1497,10 +1516,11 @@ function bilan(h){
       const pr=ref.pr!=null?ref.pr:(ref.r!=null?ref.r:(e.reps||0));
       const pw=ref.pw!=null?ref.pw:(ref.w!=null?ref.w:0);
       prevu=e.sets*pr*un(pw);
+      cible=`${e.sets} × ${pr}${pw>0?" × "+fmt(pw)+" kg":""}${cote}`;
       series.forEach(l=>{ const w=l.w!=null?l.w:pw; fait+=(l.r||0)*un(w);
         detail.push(w>0?`${l.r}×${fmt(w)} kg`:`${l.r}`); });
     }
-    return {n:e.n, t:e.type, faites:series.length, sets:e.sets, prevu, detail,
+    return {n:e.n, t:e.type, faites:series.length, sets:e.sets, prevu, detail, cible,
             taux:prevu?fait/prevu:null, ajuste:!!ajuste[e.n],
             vide:!series.length};
   });
@@ -2116,10 +2136,15 @@ function renderDone(d,frais=true){
          elle ne compte pas non plus dans la moyenne. */
       const muet=l.ajuste||(l.vide&&!b.complet);
       const fait=l.vide?(b.complet?"exercice passé":"non enregistré"):l.detail.join(" · ");
+      /* Le pourcentage doit pouvoir se vérifier : sans l'objectif écrit en
+         face, un chiffre qui surprend ne se discute pas, il s'encaisse. */
       return `<div class="bl">
-        <span class="bn">${esc(l.n)}${l.ajuste?` <i style="font-style:normal;color:var(--steel)">· ajusté</i>`:""}</span>
-        <span class="bd">${esc(fait)}</span>
-        <span class="bt${!muet&&t!=null&&t>=100?" ok":""}">${muet?"—":(t!=null?t+" %":"—")}</span>
+        <div class="bh">
+          <span class="bn">${esc(l.n)}${l.ajuste?` <em>· ajusté</em>`:""}</span>
+          <span class="bt${!muet&&t!=null&&t>=100?" ok":""}">${muet?"—":(t!=null?t+" %":"—")}</span>
+        </div>
+        <div class="bc">objectif ${esc(l.cible)}</div>
+        <div class="bd">${esc(fait)}</div>
       </div>`;}).join("")}</div>`:""}
     ${b&&b.ajustes?`<div class="note">${b.ajustes} exercice${b.ajustes>1?"s":""} abaissé${b.ajustes>1?"s":""} en séance : l'objectif a changé en cours de route, il ne compte pas comme un manque.</div>`:""}
     ${b&&!b.complet?`<div class="note">Cette séance a été enregistrée avant que l'objectif ne soit inscrit série par série : la comparaison est reconstituée à partir de la première série de chaque exercice, et les exercices au temps n'y figurent pas.</div>`:""}

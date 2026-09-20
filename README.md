@@ -246,6 +246,11 @@ décomptée, pas le temps écoulé à l'horloge : celui-ci comptait aussi les
 secondes qu'on met à faire taire l'alarme, et un gainage tenu tout juste
 jusqu'au bout valait 113 %.
 
+Chaque ligne du récapitulatif écrit l'objectif contre lequel elle se compare.
+C'est celui de la séance, pas celui du programme : « Trop dur » a pu l'abaisser
+une fois pour toutes, et dépasser une cible abaissée dépasse bien 100 % même
+quand on a fait moins que le chiffre qu'on avait en tête.
+
 Le récapitulatif de fin compare les deux, exercice par exercice, et donne un
 pourcentage d'atteinte — la moyenne des rapports par exercice, pas un total
 mêlant des kilos et des secondes. Une ligne d'historique se touche pour revoir
@@ -311,7 +316,11 @@ perdre la sauvegarde : personne, Cloudflare compris, ne peut la reconstituer.
 L'application fusionne au lieu d'écraser : les séances des deux appareils sont
 réunies par date, le reste (charges, matériel) vient du côté modifié en dernier.
 Sans réseau, tout continue en local et repart à la synchronisation suivante.
-L'export JSON reste disponible comme sauvegarde froide.
+L'export JSON reste disponible comme sauvegarde froide. Il ne contient pas la
+phrase de chiffrement : un fichier qui traîne dans les téléchargements ou
+s'envoie par mail est bien plus exposé qu'un serveur, et cette phrase est la
+seule chose qui protège la sauvegarde. Sur un appareil neuf, elle se retape ;
+elle ne se transporte pas.
 
 ## Installer sur le téléphone
 

@@ -133,6 +133,11 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    niveau 2, faire exactement sa cible donnait 125 %.
    Règle à tenir : une séance faite exactement comme prévu vaut 100 %, jamais
    plus. Le test parcourt les trois séances et le vérifie exercice par exercice.
+   Chaque ligne du bilan écrit l'objectif contre lequel elle se compare : sans
+   lui, un pourcentage qui surprend ne se discute pas, il s'encaisse. Et cet
+   objectif est celui de la séance, pas celui du programme — « Trop dur » a pu
+   l'abaisser une fois pour toutes, et dépasser une cible abaissée dépasse bien
+   100 %.
 5. ÉTAT DE SÉANCE — `S` en mémoire, recopié dans `DATA.cur` à chaque changement
    par `saveCur()` (appelé depuis `render()`), relu au démarrage par
    `reprendre()`. La séance en cours reste locale : exclue du PUT, conservée
@@ -216,7 +221,12 @@ ligne.
   commande tactile 44 px de haut — par du remplissage, pas en grossissant la
   typographie. Le test du navigateur parcourt chaque écran et le vérifie.
 - Ne jamais envoyer l'état en clair au serveur, ni écrire la phrase ailleurs que
-  dans le `localStorage` de l'appareil.
+  dans le `localStorage` de l'appareil. L'export JSON en fait partie : il en est
+  retiré, avec la séance en cours. Un fichier qui traîne dans les
+  téléchargements, s'envoie par mail ou se dépose dans une discussion est bien
+  plus exposé qu'un serveur, et la phrase est la seule chose qui protège la
+  sauvegarde chiffrée. À l'import, c'est la phrase de l'appareil qui reste en
+  place, jamais celle du fichier.
 - Jamais de second axe vertical sur un même graphique : deux échelles côte à
   côte inventent une corrélation. Deux mesures d'ordres différents, deux cadres.
 - Une séance en cours ne se perd que par « Arrêter », et seulement après deux
