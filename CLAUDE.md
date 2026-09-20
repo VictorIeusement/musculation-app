@@ -113,7 +113,10 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    vient de `S.plan`, figé au démarrage de la séance : relire les réglages
    courants donnerait une comparaison qui change à chaque montée de niveau.
    `noterRepos()` attribue la récupération réellement prise à la série qui la
-   précède — elle n'est connue qu'à la fin du décompte. `S.events` garde les
+   précède — elle n'est connue qu'à la fin du décompte. Sur un exercice au
+   temps, la durée tenue vient de `Timer.ecoule()`, jamais de l'horloge murale :
+   celle-ci comptait aussi le délai de réaction à l'alarme et les pauses, et un
+   gainage tenu tout juste jusqu'au bout affichait 113 %. `S.events` garde les
    crans montés ou descendus et les exercices passés. `bilan()` compare les deux,
    et `volumeCorps()` estime la part du poids du corps (coefficient `part` de
    l'exercice × poids mesuré le jour de la séance). Ces deux calculs se font à la
@@ -123,8 +126,13 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    trois séries de pompes pèsent plus lourd que toute la barre d'une séance, et
    les additionner rendrait l'historique incomparable du jour au lendemain.
    Une séance enregistrée avant ce journal n'a pas de prévu : `bilan()` le
-   reconstitue à partir de la première série et écarte de la moyenne les
-   exercices sans trace, plutôt que de faire passer une absence pour un échec.
+   reconstitue à partir de la PREMIÈRE série — répétitions et durée comprises,
+   pas seulement la charge — et écarte de la moyenne les exercices sans trace,
+   plutôt que de faire passer une absence pour un échec. Se rabattre sur le
+   programme de base comparerait à un objectif que la séance n'avait pas : au
+   niveau 2, faire exactement sa cible donnait 125 %.
+   Règle à tenir : une séance faite exactement comme prévu vaut 100 %, jamais
+   plus. Le test parcourt les trois séances et le vérifie exercice par exercice.
 5. ÉTAT DE SÉANCE — `S` en mémoire, recopié dans `DATA.cur` à chaque changement
    par `saveCur()` (appelé depuis `render()`), relu au démarrage par
    `reprendre()`. La séance en cours reste locale : exclue du PUT, conservée

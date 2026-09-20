@@ -241,6 +241,11 @@ tard donnerait une comparaison qui change à chaque montée de niveau. Les
 exercices au temps et l'échauffement sont inscrits eux aussi. S'y ajoutent les
 événements de séance : cran monté ou descendu, exercice passé.
 
+Sur un exercice au temps, la durée retenue est celle que le minuteur a
+décomptée, pas le temps écoulé à l'horloge : celui-ci comptait aussi les
+secondes qu'on met à faire taire l'alarme, et un gainage tenu tout juste
+jusqu'au bout valait 113 %.
+
 Le récapitulatif de fin compare les deux, exercice par exercice, et donne un
 pourcentage d'atteinte — la moyenne des rapports par exercice, pas un total
 mêlant des kilos et des secondes. Une ligne d'historique se touche pour revoir

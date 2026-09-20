@@ -1236,6 +1236,11 @@ const Timer={
     el("t-label").textContent="Temps écoulé";
     el("t-skip").textContent="Continuer";
   },
+  /* Temps réellement tenu. Mesurer à l'horloge murale comptait aussi le délai
+     de réaction à l'alarme et les pauses : un gainage de 40 s tenu jusqu'au
+     bout en valait 45 et passait à 113 % d'un objectif atteint tout juste. Le
+     minuteur, lui, sait ce qu'il a décompté. */
+  ecoule(){ return Math.max(0,Math.round(this.total-this.left)); },
   paint(){
     const s=Math.ceil(this.left);
     el("t-count").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
@@ -1333,10 +1338,9 @@ function validateSet(){
   S.log.push({
     n:e.n, t:e.type, load:e.load, side:!!e.side, uni:!!e.uni, part:e.part||0, set:S.set,
     w:S.w[i], r:S.reps[i],
-    d:e.type==="time" ? Math.max(1,Math.round((Date.now()-(S.travailT0||Date.now()))/1000)) : null,
+    d:e.type==="time" ? Math.max(1,Timer.ecoule()) : null,
     pw:pl.w, pr:pl.r, pd:pl.d, prest:pl.rest, rest:null
   });
-  S.travailT0=null;
   advance();
   if(S.i>=S.p.ex.length) return finish();   // dernier exercice : on termine ici
   const rest=getRest(S.p.id,e);
@@ -1376,7 +1380,6 @@ function peindreEnsuite(){
 
 function startWork(){
   const e=curEx();
-  S.travailT0=Date.now();
   Timer.start(S.dur[S.i], e.n, validateSet);
 }
 
@@ -1483,11 +1486,15 @@ function bilan(h){
     const series=(h.log||[]).filter(l=>l.n===e.n), ref=series[0]||{};
     let fait=0, prevu=0, detail=[];
     if(e.type==="time"){
-      const pd=ref.pd!=null?ref.pd:(e.dur||0);
+      const pd=ref.pd!=null?ref.pd:(ref.d!=null?ref.d:(e.dur||0));
       prevu=e.sets*pd;
       series.forEach(l=>{ const d=l.d!=null?l.d:pd; fait+=d; detail.push(d+" s"); });
     }else{
-      const pr=ref.pr!=null?ref.pr:(e.reps||0);
+      /* Sans objectif inscrit, la PREMIÈRE série sert de référence — répétitions
+         comprises, pas seulement la charge. Se rabattre sur le programme de base
+         comparait à un objectif que la séance n'avait pas : au niveau 2, faire
+         exactement sa cible affichait 110 %. */
+      const pr=ref.pr!=null?ref.pr:(ref.r!=null?ref.r:(e.reps||0));
       const pw=ref.pw!=null?ref.pw:(ref.w!=null?ref.w:0);
       prevu=e.sets*pr*un(pw);
       series.forEach(l=>{ const w=l.w!=null?l.w:pw; fait+=(l.r||0)*un(w);
