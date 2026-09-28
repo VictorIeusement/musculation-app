@@ -10,8 +10,7 @@ tester. Le déploiement est un `git push` sur `main` (GitHub Pages).
 - `sw.js` — service worker, stratégie réseau d'abord avec repli sur le cache.
   Le nom du cache (`CACHE`) est à incrémenter si le cache doit être purgé de force.
 - `manifest.webmanifest`, `icone-*.png` — installation sur l'écran d'accueil.
-- `sync/worker.js`, `sync/wrangler.toml` — Worker Cloudflare + KV : sauvegarde
-  chiffrée, passerelle Withings ET passerelle Strava. Déployé
+- `sync/worker.js`, `sync/wrangler.toml` — Worker Cloudflare + KV, déployé
   séparément avec `npx wrangler deploy`. Le secret Wrangler `SYNC_KEY` est le
   jeton dérivé de la phrase, jamais la phrase elle-même, jamais une valeur du
   dépôt. `ALLOWED_ORIGIN` doit correspondre à l'origine du site (sans le
@@ -84,23 +83,6 @@ Le `<script>` principal est découpé en sections numérotées en commentaires :
    un `state` tiré au sort, gardé dix minutes et brûlé à l'usage. Le Worker
    rafraîchit le jeton de lui-même et retient le nouveau `refresh_token` :
    l'ancien ne vaut plus rien après usage.
-2 quinquies. STRAVA — envoi d'une séance terminée, en activité manuelle
-   (`sport_type: WeightTraining`) : la durée, et le détail des séries en
-   description. Le choix de la version simple est assumé : Strava accepte aussi
-   un envoi structuré, série par série, mais il repose sur une liste d'exercices
-   fermée héritée du format FIT que Strava ne publie pas — la moitié du
-   programme y retomberait en « exercice inconnu ». Le texte dit tout et ne ment
-   sur rien.
-   `isoLocal()` : Strava veut une heure LOCALE sans fuseau ; la construire depuis
-   l'UTC déplacerait la séance de plusieurs heures. L'heure de début se déduit de
-   la fin moins `sec`, la durée exacte inscrite dans l'entrée d'historique —
-   arrondir à la minute ferait dériver le début.
-   Une séance envoyée garde son `strava.id` : Strava ne détecte aucun doublon, un
-   second envoi créerait une seconde activité. L'identifiant voyage avec
-   l'historique, donc la protection vaut aussi sur l'autre appareil.
-   Le secret client vit dans le Worker, comme celui de Withings : la liaison suit
-   la sauvegarde en ligne. `DATA.stravaLiee` est relu à l'ouverture de Matériel —
-   seul le Worker sait si les jetons tiennent.
 2 bis. NIVEAU DE DIFFICULTÉ — `DATA.level` par séance, `DATA.reps`, `DATA.dur`,
    `DATA.rest` par exercice. `levelUp()` applique un cran (répétitions, puis
    charge, puis récupération) ; `raiseLevel()` est le seul point d'entrée : il

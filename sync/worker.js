@@ -1,4 +1,4 @@
-/* Dépôt central des séances, passerelle Withings et passerelle Strava.
+/* Dépôt central des séances, et passerelle Withings.
 
    Racine — la sauvegarde chiffrée :
      GET  /   → renvoie la dernière enveloppe connue (ou null)
@@ -14,25 +14,13 @@
    Le secret Withings vit ici, en secret Wrangler : il ne peut pas vivre dans
    l'app, qui est un fichier statique dans un dépôt public.
 
-   /strava/* — l'envoi d'une séance terminée :
-     POST /strava/start     → prépare une autorisation, renvoie l'URL à ouvrir
-     GET  /strava/callback  → Strava y renvoie l'utilisateur, échange le code
-     GET  /strava/etat      → la liaison tient-elle ?
-     POST /strava/activity  → crée l'activité manuelle, renvoie son identifiant
-     POST /strava/forget    → oublie la liaison
-   Même raison que pour Withings : le secret client ne peut pas vivre dans un
-   fichier statique publié. L'app n'envoie que le résumé d'une séance ; c'est le
-   Worker qui porte le jeton et parle à Strava.
-
-   Les routes authentifiées exigent le jeton partagé. Les `callback` ne peuvent
-   pas :
-   c'est le fournisseur qui y renvoie le navigateur, sans en-tête. Elles sont
-   protégées par un `state` à usage unique, tiré au sort par le Worker, gardé dix minutes
+   Les routes authentifiées exigent le jeton partagé. `callback` ne peut pas :
+   c'est Withings qui y renvoie le navigateur, sans en-tête. Elle est protégée
+   par un `state` à usage unique, tiré au sort par le Worker, gardé dix minutes
    et brûlé à l'usage. */
 
 const KEY = "seances";
 const LIAISON = "withings";          // jetons Withings, dans le même KV
-const LIAISON_S = "strava";          // jetons Strava, idem
 const MAX = 1_000_000;               // 1 Mo, très au-dessus d'un historique
 
 /* Endpoints Withings. Ils n'ont pas pu être vérifiés depuis l'atelier où ce
@@ -42,14 +30,6 @@ const W_AUTH = "https://account.withings.com/oauth2_user/authorize2";
 const W_API  = "https://wbsapi.withings.net/v2/oauth2";
 const W_MES  = "https://wbsapi.withings.net/measure";
 const W_SCOPE = "user.metrics";
-
-/* Endpoints Strava. Le jeton d'accès vit six heures ; le jeton de
-   rafraîchissement, lui, ne meurt qu'à l'usage ou à une révocation explicite —
-   il faut donc retenir celui que Strava renvoie à chaque échange. */
-const S_AUTH  = "https://www.strava.com/oauth/authorize";
-const S_TOKEN = "https://www.strava.com/oauth/token";
-const S_API   = "https://www.strava.com/api/v3/activities";
-const S_SCOPE = "activity:write";
 
 /* Types de mesure Withings → nos clés. La valeur réelle est value × 10^unit. */
 const TYPES = {1:"kg", 6:"fatpc", 8:"fat", 76:"muscle", 77:"water", 88:"bone"};
@@ -92,29 +72,6 @@ export default {
         return page("Withings est connecté", "Tu peux fermer cette page et revenir dans l'app.");
       } catch (e) {
         return page("Withings a refusé l'échange", String(e.message || e));
-      }
-    }
-
-    /* ---- le retour de Strava : même contrainte, même `state` ---- */
-    if (chemin === "/strava/callback") {
-      const code = url.searchParams.get("code"), state = url.searchParams.get("state");
-      const refus = url.searchParams.get("error");
-      if (refus) return page("Autorisation refusée", "Strava a répondu : " + refus);
-      if (!code || !state) return page("Autorisation incomplète", "Strava n'a pas renvoyé de code. Recommence depuis l'app.");
-      if (!(await env.DB.get("state:" + state)))
-        return page("Demande inconnue", "Cette autorisation a expiré ou n'a pas été demandée depuis l'app. Recommence.");
-      await env.DB.delete("state:" + state);
-      /* Strava liste les autorisations réellement accordées : sans le droit
-         d'écriture, l'envoi échouerait plus tard sans qu'on sache pourquoi. */
-      const accorde = (url.searchParams.get("scope") || "").split(",");
-      if (!accorde.includes(S_SCOPE))
-        return page("Autorisation incomplète", "Il manque le droit « Envoyer des activités ». Recommence en le laissant coché.");
-      try {
-        const jetons = await echangerStrava(env, {grant_type: "authorization_code", code});
-        await env.DB.put(LIAISON_S, JSON.stringify(jetons));
-        return page("Strava est connecté", "Tu peux fermer cette page et revenir dans l'app.");
-      } catch (e) {
-        return page("Strava a refusé l'échange", String(e.message || e));
       }
     }
 
@@ -166,68 +123,6 @@ export default {
       }
     }
 
-    if (chemin === "/strava/start" && request.method === "POST") {
-      if (!env.STRAVA_ID) return erreur("STRAVA_ID manquant dans les secrets du Worker", 500);
-      const state = crypto.randomUUID();
-      await env.DB.put("state:" + state, "1", {expirationTtl: 600});
-      const p = new URLSearchParams({
-        response_type: "code",
-        client_id: env.STRAVA_ID,
-        scope: S_SCOPE,
-        approval_prompt: "auto",
-        redirect_uri: url.origin + "/strava/callback",
-        state
-      });
-      return reply(JSON.stringify({authorize: S_AUTH + "?" + p}), 200);
-    }
-
-    /* État de la liaison : l'app ne peut pas le deviner au retour de Strava,
-       c'est le Worker qui détient les jetons. */
-    if (chemin === "/strava/etat") {
-      const brut = await env.DB.get(LIAISON_S);
-      return reply(JSON.stringify({lie: !!brut, athlete: brut ? JSON.parse(brut).athlete : null}), 200);
-    }
-
-    if (chemin === "/strava/forget" && request.method === "POST") {
-      await env.DB.delete(LIAISON_S);
-      return reply('{"ok":true}', 200);
-    }
-
-    /* ---- créer l'activité. L'app envoie un résumé déjà mis en forme : le
-       Worker ne décide de rien, il signe et transmet. ---- */
-    if (chemin === "/strava/activity" && request.method === "POST") {
-      const brut = await env.DB.get(LIAISON_S);
-      if (!brut) return reply('{"lie":false}', 200);
-      let jetons = JSON.parse(brut);
-      let corps;
-      try { corps = await request.json(); } catch { return erreur("json invalide", 400); }
-      const secondes = Math.max(1, Math.round(Number(corps.elapsed_time) || 0));
-      if (!corps.start_date_local) return erreur("date manquante", 400);
-      try {
-        if (Date.now() > (jetons.expire || 0) - 60_000) {
-          jetons = await echangerStrava(env, {grant_type: "refresh_token", refresh_token: jetons.refresh});
-          await env.DB.put(LIAISON_S, JSON.stringify(jetons));
-        }
-        const p = new URLSearchParams({
-          name: String(corps.name || "Séance de musculation").slice(0, 120),
-          sport_type: "WeightTraining",
-          start_date_local: String(corps.start_date_local),
-          elapsed_time: String(secondes),
-          description: String(corps.description || "").slice(0, 8000)
-        });
-        const r = await fetch(S_API, {
-          method: "POST",
-          headers: {authorization: "Bearer " + jetons.access, "content-type": "application/x-www-form-urlencoded"},
-          body: p
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) return erreur("strava a repondu " + r.status + " " + (j.message || ""), 502);
-        return reply(JSON.stringify({lie: true, id: j.id}), 200);
-      } catch (e) {
-        return erreur(String(e.message || e), 502);
-      }
-    }
-
     /* ---- la sauvegarde chiffrée, inchangée ---- */
     if (chemin === "/") {
       if (request.method === "GET") {
@@ -245,30 +140,6 @@ export default {
     return erreur("methode non geree", 405);
   }
 };
-
-/* Échange ou rafraîchit les jetons Strava. Contrairement à Withings, une erreur
-   se lit au code HTTP. Le `refresh_token` renvoyé peut différer de l'ancien :
-   c'est le nouveau qu'il faut garder. */
-async function echangerStrava(env, champs) {
-  const p = new URLSearchParams({
-    client_id: env.STRAVA_ID,
-    client_secret: env.STRAVA_SECRET,
-    ...champs
-  });
-  const r = await fetch(S_TOKEN, {
-    method: "POST",
-    headers: {"content-type": "application/x-www-form-urlencoded"},
-    body: p
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.access_token) throw new Error("strava " + r.status + " " + (j.message || ""));
-  return {
-    access: j.access_token,
-    refresh: j.refresh_token,
-    expire: (j.expires_at ? j.expires_at * 1000 : Date.now() + 6 * 3600 * 1000),
-    athlete: j.athlete && j.athlete.id
-  };
-}
 
 /* Échange ou rafraîchit les jetons. Withings enveloppe tout dans
    {status, body} : un status non nul est une erreur, même en HTTP 200. */
