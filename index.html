@@ -690,7 +690,7 @@ function figureDe(nom){
    2. DONNÉES
    ========================================================= */
 const KEY="workout:data";
-const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0,balanceAt:0,balanceLiee:false};
+const BLANK={history:[],weights:{},reps:{},dur:{},rest:{},level:{},deleted:{},nextIdx:0,gear:null,cur:null,body:[],bodyFrom:0,balanceAt:0,balanceLiee:false,stravaLiee:false};
 let DATA=JSON.parse(JSON.stringify(BLANK));
 let persistent=true;
 
@@ -744,7 +744,7 @@ function merge(a,b){
     nextIdx:newer.nextIdx!=null?newer.nextIdx:0,
     updated:Math.max(a.updated||0,b.updated||0),
     sync:a.sync, syncedAt:a.syncedAt, cur:a.cur,
-    balanceAt:a.balanceAt||0, balanceLiee:!!a.balanceLiee
+    balanceAt:a.balanceAt||0, balanceLiee:!!a.balanceLiee, stravaLiee:!!a.stravaLiee
   };
 }
 
@@ -1438,8 +1438,10 @@ async function finish(){
      compte à part, dans `volumeCorps()`. */
   const vol=volumeExterne(S.log);
   const sets=S.log.filter(l=>l.load!=="none").length;
-  const entree={d:Date.now(), id:S.p.id, name:S.p.name, mins, vol, sets,
-                lvl:levelOf(S.p.id), log:S.log, events:S.events};
+  /* La durée en secondes, en plus des minutes : Strava veut un temps écoulé,
+     et arrondir à la minute ferait dériver l'heure de début affichée. */
+  const entree={d:Date.now(), id:S.p.id, name:S.p.name, mins, sec:Math.max(60,Math.round((Date.now()-S.t0)/1000)),
+                vol, sets, lvl:levelOf(S.p.id), log:S.log, events:S.events};
   DATA.history.unshift(entree);
   DATA.history=DATA.history.slice(0,60);
   S.p.ex.forEach((e,i)=>{ if(e.load==="bar"||e.load==="db") DATA.weights[wKey(S.p.id,e)]=S.w[i]; });
@@ -2095,6 +2097,16 @@ function renderGear(){
       <div id="s-token-out" style="display:none;margin-top:10px;font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;
            word-break:break-all;background:var(--surface);padding:12px;border-radius:10px"></div>
     </div>
+    <div class="group-h">Strava</div>
+    <div class="empty" style="padding:0 0 12px">Une séance terminée s'envoie vers Strava depuis son récapitulatif : une activité « musculation » avec sa durée, et le détail des séries en description. La liaison passe par le même serveur que la sauvegarde — pas de serveur, pas de Strava.</div>
+    ${(DATA.sync&&DATA.sync.url)?`
+      <div class="gline" style="gap:12px;border:0">
+        ${DATA.stravaLiee
+          ? `<button class="add" id="st-oublier" style="flex:1">Oublier la liaison</button>`
+          : `<button class="add" id="st-lier" style="flex:1">Connecter Strava</button>`}
+      </div>
+      <div class="empty" style="padding:8px 0 0">${DATA.stravaLiee?"Strava est connecté.":"Pas encore connecté."}</div>`
+    :`<div class="empty" style="padding:0">Il faut d'abord renseigner la sauvegarde en ligne, ci-dessus : c'est le même serveur qui détient l'autorisation Strava.</div>`}
   </div>
   <div class="foot"><button class="solid" id="g-save">Enregistrer le matériel</button></div>`;
 }
@@ -2157,6 +2169,11 @@ function renderDone(d,frais=true){
     ${frais?`<div class="empty" style="padding-top:12px">Niveau ${levelOf(d.id)}. Si elle t'a paru facile, monte d'un cran : la prochaine séance ${d.id} partira de là.</div>
     <div class="gline" style="border:0;padding-top:4px"><button class="add" id="hard-done" style="flex:1;background:transparent;border:1.5px solid var(--ink);color:var(--ink)">Monter d'un cran</button></div>`
     :`<div class="empty" style="padding-top:12px">Séance faite au niveau ${d.lvl||0}.</div>`}
+    ${(DATA.sync&&DATA.sync.url)?(d.strava
+      ? `<div class="empty" style="padding-top:10px">Envoyée vers Strava le ${jour(d.strava.at)}.
+           <a href="${STRAVA_URL(d.strava.id)}" target="_blank" rel="noopener noreferrer"
+              style="color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px">Voir l'activité</a></div>`
+      : `<div class="gline" style="border:0;padding-top:10px"><button class="add" id="strava" style="flex:1">Envoyer vers Strava</button></div>`):""}
     ${persistent?"":`<div class="empty">Le stockage n'a pas répondu : cette séance ne sera pas retrouvée à la prochaine ouverture.</div>`}
   </div>
   <div class="foot"><button class="solid" id="home">Retour à l'accueil</button></div>`;
@@ -2179,7 +2196,12 @@ view.addEventListener("click",ev=>{
 
   if(b.dataset.start!=null) return startSession(+b.dataset.start);
   if(b.id==="home") return render();
-  if(b.id==="gear") return renderGear();
+  if(b.id==="gear"){
+    /* Seul le Worker sait si Strava est encore lié : on le lui demande à
+       l'ouverture de l'écran, et on ne repeint que si la réponse change. */
+    if(DATA.sync&&DATA.sync.url) etatStrava().then(ch=>{ if(ch) renderGear(); });
+    return renderGear();
+  }
   if(b.id==="suivi"){
     renderBody();
     /* Six heures entre deux relevés — sauf quand on ignore encore si la liaison
@@ -2229,6 +2251,9 @@ view.addEventListener("click",ev=>{
   if(b.id==="g-save"){ readGear(); buildLoads(); save(); toast("Matériel enregistré"); return render(); }
   if(b.id==="hard") return harder();
   if(b.id==="soft") return plusDur();
+  if(b.id==="st-lier") return connecterStrava();
+  if(b.id==="st-oublier") return oublierStrava();
+  if(b.id==="strava") return envoyerStrava(lastDone);
   if(b.id==="hard-done"){
     const n=raiseLevel(lastDone.id);
     if(n) toast("Niveau "+n+" : la prochaine séance "+lastDone.id+" partira de là");
@@ -2405,12 +2430,14 @@ function rendreValeurs(m){
    ========================================================= */
 const RELEVE=6*3600*1000;   // on ne redemande pas plus souvent que ça
 
-async function auWorker(chemin,methode){
+async function auWorker(chemin,methode,corps){
   const s=DATA.sync;
   if(!s||!s.url||!s.key) throw new Error("configure d'abord la sauvegarde en ligne");
   const k=await derive(s.key);
   const r=await fetch(s.url+chemin,{method:methode||"GET",
-    headers:{authorization:"Bearer "+k.token},cache:"no-store"});
+    headers:{authorization:"Bearer "+k.token,
+             ...(corps?{"content-type":"application/json"}:{})},
+    body:corps?JSON.stringify(corps):undefined, cache:"no-store"});
   let j={}; try{ j=await r.json(); }catch(e){}
   if(!r.ok) throw new Error(j.error||("le serveur a répondu "+r.status));
   return j;
@@ -2449,6 +2476,90 @@ async function releverBalance(silencieux){
                              :"Aucune mesure nouvelle");
     return n>0||avant!==DATA.balanceLiee;
   }catch(e){ if(!silencieux) toast("Balance : "+e.message); return false; }
+}
+
+/* =========================================================
+   2 quinquies. STRAVA
+   Version simple, assumée : Strava reçoit une activité « musculation » avec sa
+   durée et, en description, le détail des séries en texte. Il existe un format
+   structuré — un envoi JSON série par série — mais il repose sur une liste
+   d'exercices fermée, héritée du format FIT, que Strava ne publie pas ; la
+   moitié du programme y retomberait en « exercice inconnu ». Le texte, lui,
+   dit tout et ne ment sur rien.
+   Le secret client vit dans le Worker, comme celui de Withings : la liaison
+   suit donc la sauvegarde en ligne.
+   ========================================================= */
+const STRAVA_URL=id=>"https://www.strava.com/activities/"+id;
+
+/* Strava attend une heure LOCALE sans fuseau : la construire depuis l'UTC
+   déplacerait la séance de plusieurs heures dans le journal. */
+function isoLocal(t){
+  const d=new Date(t), n=v=>String(v).padStart(2,"0");
+  return d.getFullYear()+"-"+n(d.getMonth()+1)+"-"+n(d.getDate())+
+         "T"+n(d.getHours())+":"+n(d.getMinutes())+":"+n(d.getSeconds());
+}
+const secondesDe=h=>h.sec||Math.max(60,(h.mins||1)*60);
+
+/* Le détail lisible d'une séance, tel qu'il apparaîtra sous l'activité. */
+function descriptionStrava(h){
+  const p=PROGRAM.find(q=>q.id===h.id);
+  const lignes=[];
+  if(p) p.ex.filter(e=>e.load!=="none").forEach(e=>{
+    const r=resumeEx(h.log,e);
+    if(r) lignes.push(e.n+" — "+r.txt);
+  });
+  const corps=volumeCorps(h.log,h.d), b=bilan(h);
+  const chiffres=[(h.vol||0).toLocaleString("fr-FR")+" kg de charge externe"];
+  if(corps!=null) chiffres.push(corps.toLocaleString("fr-FR")+" kg estimés au poids du corps");
+  const bas=[chiffres.join(" · ")];
+  if(b&&b.taux!=null) bas.push(motDuTaux(b.taux)+" · "+Math.round(b.taux*100)+" % de l'objectif du jour");
+  bas.push("Niveau "+(h.lvl||0)+".");
+  return (lignes.length?lignes.join("\n")+"\n\n":"")+bas.join("\n");
+}
+
+async function etatStrava(){
+  try{
+    const j=await auWorker("/strava/etat");
+    const avant=!!DATA.stravaLiee;
+    DATA.stravaLiee=!!j.lie;
+    if(avant!==DATA.stravaLiee) localSave();
+    return avant!==DATA.stravaLiee;
+  }catch(e){ return false; }
+}
+
+async function connecterStrava(){
+  try{ const j=await auWorker("/strava/start","POST"); location.href=j.authorize; }
+  catch(e){ toast("Strava : "+e.message); }
+}
+
+async function oublierStrava(){
+  if(!confirm("Oublier la liaison Strava ? Les séances déjà envoyées y restent.")) return;
+  try{ await auWorker("/strava/forget","POST"); DATA.stravaLiee=false; save(); renderGear(); toast("Liaison oubliée"); }
+  catch(e){ toast("Strava : "+e.message); }
+}
+
+/* Une séance déjà envoyée ne se renvoie pas : Strava créerait un doublon sans
+   rien dire. L'identifiant reçu est gardé avec la séance, et voyage donc avec
+   l'historique d'un appareil à l'autre. */
+async function envoyerStrava(h){
+  if(!h||h.strava) return;
+  const sec=secondesDe(h);
+  try{
+    const j=await auWorker("/strava/activity","POST",{
+      name:"Séance "+h.id+" · "+h.name,
+      start_date_local:isoLocal(h.d-sec*1000),
+      elapsed_time:sec,
+      description:descriptionStrava(h)
+    });
+    if(!j.lie){
+      DATA.stravaLiee=false; save(); renderDone(h,false);
+      return toast("Strava n'est pas connecté : va dans Matériel");
+    }
+    DATA.stravaLiee=true;
+    h.strava={id:j.id, at:Date.now()};
+    save(); renderDone(h,false);
+    toast("Séance envoyée vers Strava");
+  }catch(e){ toast("Strava : "+e.message); }
 }
 
 function importBalance(file){

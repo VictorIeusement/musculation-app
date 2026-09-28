@@ -322,6 +322,35 @@ s'envoie par mail est bien plus exposé qu'un serveur, et cette phrase est la
 seule chose qui protège la sauvegarde. Sur un appareil neuf, elle se retape ;
 elle ne se transporte pas.
 
+## Envoyer une séance vers Strava
+
+Une séance terminée s'envoie depuis son récapitulatif : elle arrive dans Strava
+comme activité « musculation », avec sa durée réelle et, en description, le
+détail de chaque exercice, la charge soulevée et le pourcentage d'atteinte.
+
+C'est volontairement la version simple. Strava accepte aussi un envoi structuré,
+série par série, mais il repose sur une liste d'exercices fermée — héritée du
+format FIT des montres — que Strava ne publie pas, et dont plusieurs valeurs
+retombent en « exercice inconnu ». La moitié du programme y passerait. Le texte,
+lui, dit tout.
+
+Le secret client Strava vit dans le Worker, jamais dans l'app : la liaison suit
+donc la sauvegarde en ligne. Mise en place, une fois :
+
+1. Créer une application sur <https://www.strava.com/settings/api>. Le champ
+   **Authorization Callback Domain** prend le domaine du Worker seul, sans
+   `https://` ni chemin — par exemple `seances-sync.xxx.workers.dev`. Noter le
+   *Client ID* et le *Client Secret*.
+2. Côté Cloudflare, ajouter deux **secrets** au Worker : `STRAVA_ID` et
+   `STRAVA_SECRET`. Redéployer.
+3. Dans l'app : Matériel → **Connecter Strava**, en laissant coché le droit
+   d'envoyer des activités. Le Worker le vérifie et le dit tout de suite s'il
+   manque, plutôt que de laisser l'envoi échouer plus tard sans raison visible.
+
+Une séance déjà envoyée ne se renvoie pas : Strava ne détecte aucun doublon et
+créerait une seconde activité. L'identifiant reçu est gardé avec la séance, donc
+la protection vaut aussi depuis l'autre appareil.
+
 ## Installer sur le téléphone
 
 Ouvrir l'URL du site, puis « Ajouter à l'écran d'accueil ».
